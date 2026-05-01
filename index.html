@@ -115,25 +115,35 @@ window.fazerCadastro = async function() {
     if (codigoData.usado) { authToast('Este código já foi utilizado!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
     const validade = codigoData.validade?.toDate ? codigoData.validade.toDate() : new Date(codigoData.validade);
     if (validade < new Date()) { authToast('Código de acesso vencido!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
-    // Cria usuário
+    // Cria usuário no Auth
     btn.textContent = 'Criando conta...';
-    const cred = await createUserWithEmailAndPassword(auth, email, senha);
-    // Salva no Firestore
-    await setDoc(doc(db_fire, 'usuarios', cred.user.uid), {
-      nome, email, ativo: true,
-      validade: codigoData.validade,
-      plano: codigoData.plano || 'mensal',
-      codigoUsado: codigo,
-      criadoEm: serverTimestamp(),
-      dispositivos: []
-    });
-    // Marca código como usado
-    await updateDoc(doc(db_fire, 'codigos', codigo), { usado: true, usadoPor: email, usadoEm: serverTimestamp() });
-  } catch(e) {
-    if (e.code === 'auth/email-already-in-use') authToast('E-mail já cadastrado!', 'error');
-    else authToast('Erro ao criar conta: ' + e.message, 'error');
-    btn.disabled=false; btn.textContent='Criar Conta';
-  }
+    let cred;
+    try {
+      cred = await createUserWithEmailAndPassword(auth, email, senha);
+    } catch(e) {
+      if (e.code === 'auth/email-already-in-use') authToast('E-mail já cadastrado!', 'error');
+      else authToast('Erro ao criar conta: ' + e.message, 'error');
+      btn.disabled=false; btn.textContent='Criar Conta';
+      return;
+    }
+    // Salva no Firestore — com rollback se falhar
+    try {
+      await setDoc(doc(db_fire, 'usuarios', cred.user.uid), {
+        nome, email, ativo: true,
+        validade: codigoData.validade,
+        plano: codigoData.plano || 'mensal',
+        codigoUsado: codigo,
+        criadoEm: serverTimestamp(),
+        dispositivos: []
+      });
+      // Marca código como usado
+      await updateDoc(doc(db_fire, 'codigos', codigo), { usado: true, usadoPor: email, usadoEm: serverTimestamp() });
+    } catch(e) {
+      // ⚠️ ROLLBACK: remove do Auth para não ficar usuário fantasma
+      await cred.user.delete();
+      authToast('Erro ao salvar dados. Tente novamente.', 'error');
+      btn.disabled=false; btn.textContent='Criar Conta';
+    }
 };
 
 window.fazerLogout = async function() {
