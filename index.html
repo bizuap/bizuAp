@@ -2280,19 +2280,14 @@ Object.assign(window, {
 
 function renderMd(text) {
   if (!text) return '';
-  return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/__(.*?)__/g, '<strong>$1</strong>')
-    .replace(/_(.*?)_/g, '<em>$1</em>')
-    .replace(/^(#{1,3})\s+(.+)$/gm, (m,h,t) => `<strong>${t}</strong>`)
-    .replace(/^[-•]\s+(.+)$/gm, '<span style="display:block;padding-left:12px">• $1</span>')
-    .replace(/
-
-+/g, '<br><br>')
-    .replace(/
-/g, '<br>');
+  let h = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h = h.replace(/[*][*]([^*]+)[*][*]/g, function(m,g){return '<strong>'+g+'</strong>';});
+  h = h.replace(/[*]([^*]+)[*]/g, function(m,g){return '<em>'+g+'</em>';});
+  h = h.split('\n- ').join('<br><span style="padding-left:10px">• </span>');
+  h = h.split('\n• ').join('<br><span style="padding-left:10px">• </span>');
+  h = h.split('\n\n').join('<br><br>');
+  h = h.split('\n').join('<br>');
+  return h;
 }
 
 // =============================================
