@@ -530,14 +530,14 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     <div class="nav-item" onclick="showTab('quiz')">
       <span class="icon">✏️</span><span>Responder</span>
     </div>
-    <div class="nav-section-label">Adicionar</div>
-    <div class="nav-item" onclick="showTab('cadastrar')">
+    <div class="nav-section-label admin-only" style="display:none">Adicionar</div>
+    <div class="nav-item admin-only" style="display:none" onclick="showTab('cadastrar')">
       <span class="icon">➕</span><span>Cadastrar</span>
     </div>
-    <div class="nav-item" onclick="showTab('gerar')">
+    <div class="nav-item admin-only" style="display:none" onclick="showTab('gerar')">
       <span class="icon">🤖</span><span>Gerar com IA</span>
     </div>
-    <div class="nav-item" onclick="showTab('importar')">
+    <div class="nav-item admin-only" style="display:none" onclick="showTab('importar')">
       <span class="icon">📥</span><span>Importar JSON</span>
     </div>
     <div class="nav-section-label">Análise</div>
@@ -709,6 +709,7 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
         <div class="feedback-card" id="feedback-card">
           <div class="feedback-header" id="feedback-header"></div>
           <p id="feedback-text" style="font-size:13.5px;color:var(--text-mid)"></p>
+          <button id="btn-editar-comentario" class="btn btn-ghost btn-sm" style="display:none;margin-top:10px" onclick="abrirEditarComentario()">✏️ Editar Fundamentação</button>
         </div>
         <div class="quiz-actions">
           <button class="btn btn-ghost" onclick="skipQuestion()">Pular →</button>
@@ -961,7 +962,20 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 </div><!-- /main -->
 </div><!-- /app-screen -->
 
-<!-- MODAL SETTINGS -->
+<!-- MODAL EDITAR COMENTÁRIO -->
+<div class="modal-overlay" id="modal-editar-comentario">
+  <div class="modal">
+    <h3>✏️ Editar Fundamentação</h3>
+    <p>Esta fundamentação será visível para todos os alunos após revelar o gabarito.</p>
+    <div class="form-group" style="margin-bottom:14px">
+      <textarea class="form-textarea" id="edit-comentario-text" style="min-height:130px" placeholder="Explique a resposta correta, cite o artigo de lei, dê dicas de memorização..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-editar-comentario').classList.remove('show')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarComentarioEditado()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
     <h3>⚙️ Configurações</h3>
@@ -1027,25 +1041,25 @@ function saveMaterias() {
   localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
 }
 
-function adicionarMateria(nome) {
+async function adicionarMateria(nome) {
   nome = nome.trim();
   if (!nome) { toast('Digite um nome para a matéria!', 'error'); return; }
   if (ASSUNTOS.includes(nome)) { toast('Matéria já existe!', 'error'); return; }
   ASSUNTOS.push(nome);
-  saveMaterias();
+  await salvarMateriaFirestore(nome);
   populateSelects();
   renderMateriasList();
   toast(`Matéria "${nome}" adicionada!`);
 }
 
-function removerMateria(nome) {
+async function removerMateria(nome) {
   const emUso = db.questoes.filter(q => q.assunto === nome).length;
   const msg = emUso
-    ? `A matéria "${nome}" tem ${emUso} questão(ões) vinculada(s). Remover mesmo assim? As questões continuarão no banco.`
+    ? `A matéria "${nome}" tem ${emUso} questão(ões) vinculada(s). Remover mesmo assim?`
     : `Remover a matéria "${nome}"?`;
   if (!confirm(msg)) return;
   ASSUNTOS = ASSUNTOS.filter(a => a !== nome);
-  saveMaterias();
+  await removerMateriaFirestore(nome);
   populateSelects();
   renderMateriasList();
   toast(`Matéria removida!`, 'info');
@@ -1064,15 +1078,92 @@ function renderMateriasList() {
   }).join('') || '<p style="color:var(--text-muted);font-size:13px">Nenhuma matéria cadastrada.</p>';
 }
 
+// =============================================
+// DADOS — integração Firestore
+// =============================================
 let db = {
-  questoes: JSON.parse(localStorage.getItem('pcap_questoes') || '[]'),
-  respostas: JSON.parse(localStorage.getItem('pcap_respostas') || '[]'),
+  questoes: [],
+  respostas: [],
   settings: JSON.parse(localStorage.getItem('pcap_settings') || '{}'),
 };
 
+function isAdmin() {
+  return window._currentUser && window._currentUser.email === 'bizuap.app@gmail.com';
+}
+
+// Carrega questões do Firestore
+async function carregarQuestoes() {
+  const { db_fire, collection, getDocs, query, orderBy } = window._fire;
+  const snap = await getDocs(collection(db_fire, 'questoes'));
+  db.questoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  updateBadge();
+}
+
+// Carrega respostas do usuário atual
+async function carregarRespostas() {
+  if (!window._currentUser) return;
+  const { db_fire, collection, getDocs } = window._fire;
+  const snap = await getDocs(collection(db_fire, 'respostas', window._currentUser.uid, 'registros'));
+  db.respostas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+// Carrega matérias do Firestore
+async function carregarMaterias() {
+  const { db_fire, collection, getDocs } = window._fire;
+  try {
+    const snap = await getDocs(collection(db_fire, 'materias'));
+    if (!snap.empty) {
+      ASSUNTOS = snap.docs.map(d => d.data().nome).filter(Boolean).sort();
+    }
+  } catch(e) {
+    ASSUNTOS = [...MATERIAS_DEFAULT];
+  }
+}
+
+// Salva questão no Firestore (só admin)
+async function salvarQuestaoFirestore(q) {
+  if (!isAdmin()) { toast('Sem permissão!', 'error'); return false; }
+  const { db_fire, doc, setDoc } = window._fire;
+  await setDoc(doc(db_fire, 'questoes', q.id), q);
+  db.questoes.push(q);
+  updateBadge();
+  return true;
+}
+
+// Salva resposta no Firestore
+async function salvarRespostaFirestore(resposta) {
+  if (!window._currentUser) return;
+  const { db_fire, doc, setDoc } = window._fire;
+  await setDoc(doc(db_fire, 'respostas', window._currentUser.uid, 'registros', resposta.id), resposta);
+  db.respostas.push(resposta);
+}
+
+// Salva matéria no Firestore (só admin)
+async function salvarMateriaFirestore(nome) {
+  if (!isAdmin()) return;
+  const { db_fire, doc, setDoc } = window._fire;
+  await setDoc(doc(db_fire, 'materias', nome), { nome });
+}
+
+// Remove matéria do Firestore (só admin)
+async function removerMateriaFirestore(nome) {
+  if (!isAdmin()) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  await deleteDoc(doc(db_fire, 'materias', nome));
+}
+
+// Atualiza comentário de questão (só admin)
+async function atualizarComentarioFirestore(qid, comentario) {
+  if (!isAdmin()) return;
+  const { db_fire, doc, updateDoc } = window._fire;
+  await updateDoc(doc(db_fire, 'questoes', qid), { comentario });
+  const q = db.questoes.find(q => q.id === qid);
+  if (q) q.comentario = comentario;
+}
+
+// Mantém compatibilidade — saveDB agora salva só settings
 function saveDB() {
-  localStorage.setItem('pcap_questoes', JSON.stringify(db.questoes));
-  localStorage.setItem('pcap_respostas', JSON.stringify(db.respostas));
+  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
 }
 
 function genId() {
@@ -1130,9 +1221,17 @@ function showTab(tab) {
 // =============================================
 // INIT
 // =============================================
-function init() {
+async function init() {
+  await carregarMaterias();
   populateSelects();
   buildOpcoesForm();
+  // Mostra abas admin
+  if (isAdmin()) {
+    document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'flex');
+  }
+  // Carrega dados do Firestore
+  await carregarQuestoes();
+  await carregarRespostas();
   updateBadge();
   renderInicio();
   if (db.settings.apiKey)
@@ -1376,8 +1475,8 @@ function confirmarResposta() {
   const correta = Q.sel === q.gabarito;
   if (correta) Q.acertos++;
 
-  db.respostas.push({ id:genId(), questionId:q.id, resposta:Q.sel, correta, tempo:Q.seg, timestamp:Date.now() });
-  saveDB();
+  const resposta = { id:genId(), questionId:q.id, resposta:Q.sel, correta, tempo:Q.seg, timestamp:Date.now() };
+  salvarRespostaFirestore(resposta);
 
   document.querySelectorAll('.option-item').forEach(e => { e.classList.add('disabled'); e.onclick=null; });
   document.getElementById('opt-'+q.gabarito).classList.remove('selected');
@@ -1391,6 +1490,14 @@ function confirmarResposta() {
   fb.className = 'feedback-card show' + (!correta ? ' wrong' : '');
   document.getElementById('feedback-header').innerHTML = correta ? '✅ Resposta Correta!' : `❌ Resposta Errada — Gabarito: <strong>${q.gabarito}</strong>`;
   document.getElementById('feedback-text').textContent = q.comentario || (correta ? 'Ótimo! Continue assim.' : `A alternativa correta é a ${q.gabarito}.`);
+
+  // Botão editar comentário (só admin)
+  const editBtn = document.getElementById('btn-editar-comentario');
+  if (editBtn) editBtn.style.display = isAdmin() ? 'inline-flex' : 'none';
+  if (isAdmin()) {
+    window._editQid = q.id;
+    window._editComentario = q.comentario || '';
+  }
 
   document.getElementById('btn-confirmar').style.display = 'none';
   document.getElementById('btn-proxima').style.display = 'inline-flex';
@@ -1434,7 +1541,7 @@ function setGabarito(l) {
   });
 }
 
-function salvarQuestaoManual() {
+async function salvarQuestaoManual() {
   const enunciado = document.getElementById('cad-enunciado').value.trim();
   if (!enunciado) { toast('Preencha o enunciado!', 'error'); return; }
   if (!gabaritoAtual) { toast('Selecione o gabarito!', 'error'); return; }
@@ -1460,11 +1567,8 @@ function salvarQuestaoManual() {
     createdAt: Date.now(),
   };
 
-  db.questoes.push(q);
-  saveDB();
-  updateBadge();
-  toast('Questão salva com sucesso!');
-  limparForm();
+  const ok = await salvarQuestaoFirestore(q);
+  if (ok) { toast('Questão salva com sucesso!'); limparForm(); }
 }
 
 function salvarQuestaoObj(q) {
@@ -1599,21 +1703,23 @@ function renderAIResultados(questoes) {
   });
 }
 
-function salvarTodasIA() {
+async function salvarTodasIA() {
   if (!window._aiQuestoes?.length) return;
   let saved = 0;
-  window._aiQuestoes.forEach(q => {
-    if (!db.questoes.find(e => e.id === q.id)) { db.questoes.push(q); saved++; }
-  });
-  saveDB(); updateBadge();
+  for (const q of window._aiQuestoes) {
+    if (!db.questoes.find(e => e.id === q.id)) {
+      await salvarQuestaoFirestore(q);
+      saved++;
+    }
+  }
   toast(`${saved} questão(ões) salva(s) no banco!`);
 }
 
-function salvarUmaIA(i) {
+async function salvarUmaIA(i) {
   const q = window._aiQuestoes?.[i];
   if (!q) return;
   if (db.questoes.find(e => e.id === q.id)) { toast('Questão já salva!', 'info'); return; }
-  db.questoes.push(q); saveDB(); updateBadge();
+  await salvarQuestaoFirestore(q);
   toast('Questão salva!');
 }
 
@@ -1848,12 +1954,13 @@ function renderImportPreview(validas, erros) {
   window._importNovas = novas;
 }
 
-function confirmarImport() {
+async function confirmarImport() {
   const novas = (window._importNovas || []).filter(q => !q.jaExiste);
   if (!novas.length) { toast('Nenhuma questão nova para importar!', 'info'); return; }
 
-  novas.forEach(q => {
-    db.questoes.push({
+  let saved = 0;
+  for (const q of novas) {
+    const obj = {
       id: genId(),
       enunciado: q.enunciado,
       opcoes: q.opcoes,
@@ -1866,16 +1973,34 @@ function confirmarImport() {
       comentario: q.comentario || '',
       fonte: 'importado',
       createdAt: Date.now(),
-    });
-  });
+    };
+    await salvarQuestaoFirestore(obj);
+    saved++;
+  }
 
-  saveDB();
-  updateBadge();
-  toast(`${novas.length} questão(ões) importada(s) com sucesso!`);
+  toast(`${saved} questão(ões) importada(s) com sucesso!`);
   document.getElementById('import-json').value = '';
   document.getElementById('import-preview').innerHTML = '';
   window._importNovas = [];
 }
+
+function abrirEditarComentario() {
+  document.getElementById('edit-comentario-text').value = window._editComentario || '';
+  document.getElementById('modal-editar-comentario').classList.add('show');
+}
+
+async function salvarComentarioEditado() {
+  const texto = document.getElementById('edit-comentario-text').value.trim();
+  await atualizarComentarioFirestore(window._editQid, texto);
+  document.getElementById('feedback-text').textContent = texto || 'Fundamentação atualizada!';
+  document.getElementById('modal-editar-comentario').classList.remove('show');
+  window._editComentario = texto;
+  toast('Fundamentação atualizada!');
+}
+
+document.getElementById('modal-editar-comentario')?.addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
 
 // =============================================
 // SETTINGS
