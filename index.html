@@ -144,6 +144,10 @@ window.fazerCadastro = async function() {
       authToast('Erro ao salvar dados. Tente novamente.', 'error');
       btn.disabled=false; btn.textContent='Criar Conta';
     }
+  } catch(e) {
+    authToast('Erro inesperado: ' + e.message, 'error');
+    btn.disabled=false; btn.textContent='Criar Conta';
+  }
 };
 
 window.fazerLogout = async function() {
