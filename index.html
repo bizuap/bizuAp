@@ -566,7 +566,7 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     <div class="nav-item admin-only" style="display:none" onclick="showTab('admin')">
       <span class="icon">👑</span><span>Admin</span>
     </div>
-    <div class="settings-btn" onclick="openSettings()">
+    <div class="settings-btn admin-only" style="display:none" onclick="openSettings()">
       <span class="icon">⚙️</span><span>Configurações</span>
     </div>
     <div class="settings-btn" onclick="fazerLogout()">
@@ -619,7 +619,7 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     <div class="page-header">
       <div><h2>📚 Banco de Questões</h2><p id="banco-count">Nenhuma questão cadastrada</p></div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="showTab('cadastrar')">➕ Cadastrar</button>
+        <button class="btn btn-ghost btn-sm admin-only" style="display:none" onclick="showTab('cadastrar')">➕ Cadastrar</button>
         <button class="btn btn-primary btn-sm" onclick="startQuizFromFilter()">▶ Responder Filtro</button>
       </div>
     </div>
@@ -2255,6 +2255,26 @@ function resetarProgresso() {
 
 document.getElementById('modal-settings').addEventListener('click', function(e) {
   if (e.target === this) closeSettings();
+});
+
+
+// Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
+Object.assign(window, {
+  saveMaterias, adicionarMateria, removerMateria, renderMateriasList,
+  isAdmin, showTab, toast,
+  populateSelects, buildOpcoesForm, atualizarTopicosBanco, atualizarTopicosQuiz,
+  renderBanco, startQuizFromFilter, renderQuizStart,
+  abrirQuestaoSozinha, startQuiz, iniciarSessao, selectOption,
+  confirmarResposta, proximaQuestao, skipQuestion, mostrarResultado,
+  setGabarito, salvarQuestaoManual, limparForm, gerarComIA,
+  renderAIResultados, salvarTodasIA, salvarUmaIA,
+  renderInicio, renderStats, renderRevisao, startRevisaoQuiz,
+  lerArquivoJSON, validarImport, confirmarImport,
+  abrirEditarComentario, salvarComentarioEditado,
+  abrirEditarQuestao, fecharEditarQuestao, setEditGabarito, salvarEdicaoQuestao,
+  excluirQuestao, apagarPorFonte, apagarTodasQuestoes,
+  openSettings, closeSettings, saveSettings, resetarProgresso,
+  genId, getUltimaResposta, updateBadge,
 });
 
 // =============================================
