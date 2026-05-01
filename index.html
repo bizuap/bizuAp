@@ -1598,7 +1598,7 @@ function confirmarResposta() {
   const fb = document.getElementById('feedback-card');
   fb.className = 'feedback-card show' + (!correta ? ' wrong' : '');
   document.getElementById('feedback-header').innerHTML = correta ? '✅ Resposta Correta!' : `❌ Resposta Errada — Gabarito: <strong>${q.gabarito}</strong>`;
-  document.getElementById('feedback-text').textContent = q.comentario || (correta ? 'Ótimo! Continue assim.' : `A alternativa correta é a ${q.gabarito}.`);
+  document.getElementById('feedback-text').innerHTML = renderMd(q.comentario || (correta ? 'Ótimo! Continue assim.' : `A alternativa correta é a ${q.gabarito}.`));
 
   // Botão editar comentário (só admin)
   const editBtn = document.getElementById('btn-editar-comentario');
@@ -2276,6 +2276,24 @@ Object.assign(window, {
   openSettings, closeSettings, saveSettings, resetarProgresso,
   genId, getUltimaResposta, updateBadge,
 });
+
+
+function renderMd(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    .replace(/_(.*?)_/g, '<em>$1</em>')
+    .replace(/^(#{1,3})\s+(.+)$/gm, (m,h,t) => `<strong>${t}</strong>`)
+    .replace(/^[-•]\s+(.+)$/gm, '<span style="display:block;padding-left:12px">• $1</span>')
+    .replace(/
+
++/g, '<br><br>')
+    .replace(/
+/g, '<br>');
+}
 
 // =============================================
 // START
