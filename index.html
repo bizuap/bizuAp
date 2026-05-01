@@ -962,6 +962,33 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
         </div>
         <div id="admin-codigos-list"><p style="color:var(--text-muted);font-size:13px">Clique em Atualizar para carregar.</p></div>
       </div>
+      <!-- GERENCIAR QUESTÕES -->
+      <div class="form-section" style="margin-bottom:14px">
+        <h3>🗑 Gerenciar Banco de Questões</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--red-light);border-radius:8px;flex-wrap:wrap">
+            <div style="flex:1">
+              <p style="font-size:13.5px;font-weight:600;color:var(--red)">🗑 Apagar questões por fonte</p>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:2px">Apaga apenas as questões de uma fonte específica</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select class="filter-select" id="delete-fonte-select">
+                <option value="importado">Importado (JSON)</option>
+                <option value="manual">Manual</option>
+                <option value="ia">Gerado por IA</option>
+              </select>
+              <button class="btn btn-danger btn-sm" onclick="apagarPorFonte()">Apagar</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--red-light);border-radius:8px;flex-wrap:wrap">
+            <div style="flex:1">
+              <p style="font-size:13.5px;font-weight:600;color:var(--red)">💣 Apagar TODAS as questões</p>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove permanentemente todas as questões. Ação irreversível!</p>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="apagarTodasQuestoes()">Apagar Tudo</button>
+          </div>
+        </div>
+      </div>
       <!-- LISTA ALUNOS -->
       <div class="form-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -2150,6 +2177,38 @@ async function salvarEdicaoQuestao() {
   fecharEditarQuestao();
   renderBanco();
   toast('Questão atualizada!');
+}
+
+async function apagarPorFonte() {
+  const fonte = document.getElementById('delete-fonte-select').value;
+  const alvo = db.questoes.filter(q => q.fonte === fonte);
+  if (!alvo.length) { toast('Nenhuma questão com essa fonte!', 'info'); return; }
+  if (!confirm(`Apagar ${alvo.length} questão(ões) com fonte "${fonte}"? Ação irreversível!`)) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  let count = 0;
+  for (const q of alvo) {
+    await deleteDoc(doc(db_fire, 'questoes', q.id));
+    count++;
+  }
+  db.questoes = db.questoes.filter(q => q.fonte !== fonte);
+  updateBadge();
+  renderBanco();
+  toast(`${count} questão(ões) apagada(s)!`, 'info');
+}
+
+async function apagarTodasQuestoes() {
+  if (!confirm(`Apagar TODAS as ${db.questoes.length} questões do banco? Ação IRREVERSÍVEL!`)) return;
+  if (!confirm('Tem certeza absoluta? Isso não pode ser desfeito!')) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  let count = 0;
+  for (const q of db.questoes) {
+    await deleteDoc(doc(db_fire, 'questoes', q.id));
+    count++;
+  }
+  db.questoes = [];
+  updateBadge();
+  renderBanco();
+  toast(`${count} questão(ões) apagada(s)!`, 'info');
 }
 
 async function excluirQuestao(id) {
