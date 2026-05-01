@@ -990,6 +990,70 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     </div>
   </div>
 </div>
+
+<!-- MODAL EDITAR QUESTÃO -->
+<div class="modal-overlay" id="modal-editar-questao">
+  <div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
+    <h3>✏️ Editar Questão</h3>
+    <p>Edite os dados da questão e salve.</p>
+    <input type="hidden" id="edit-q-id">
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="form-group">
+        <label>Matéria</label>
+        <select class="form-select" id="edit-q-assunto"></select>
+      </div>
+      <div class="form-group">
+        <label>Tópico</label>
+        <input class="form-input" id="edit-q-topico">
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="form-group">
+        <label>Banca</label>
+        <input class="form-input" id="edit-q-banca">
+      </div>
+      <div class="form-group">
+        <label>Ano</label>
+        <input class="form-input" type="number" id="edit-q-ano">
+      </div>
+      <div class="form-group">
+        <label>Dificuldade</label>
+        <select class="form-select" id="edit-q-dificuldade">
+          <option value="Fácil">Fácil</option>
+          <option value="Médio">Médio</option>
+          <option value="Difícil">Difícil</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Enunciado</label>
+      <textarea class="form-textarea" id="edit-q-enunciado" style="min-height:100px"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Alternativas</label>
+      <div id="edit-opcoes-form"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>Gabarito</label>
+      <div class="gabarito-options" id="edit-gabarito-options">
+        <button class="gabarito-btn" onclick="setEditGabarito('A')">A</button>
+        <button class="gabarito-btn" onclick="setEditGabarito('B')">B</button>
+        <button class="gabarito-btn" onclick="setEditGabarito('C')">C</button>
+        <button class="gabarito-btn" onclick="setEditGabarito('D')">D</button>
+        <button class="gabarito-btn" onclick="setEditGabarito('E')">E</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Comentário / Fundamentação</label>
+      <textarea class="form-textarea" id="edit-q-comentario" style="min-height:100px"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="fecharEditarQuestao()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoQuestao()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
     <h3>⚙️ Configurações</h3>
@@ -1347,6 +1411,10 @@ function renderBanco() {
           ${r ? `<span class="tag ${r.correta ? 'tag-green' : 'tag-red'}">${r.correta ? '✓ Acertada' : '✗ Errada'}</span>` : ''}
         </div>
       </div>
+      ${isAdmin() ? `<div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="abrirEditarQuestao('${q.id}')" title="Editar">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirQuestao('${q.id}')" title="Excluir">🗑</button>
+      </div>` : ''}
       <div class="q-status ${stClass}"></div>
     </div>`;
   }).join('');
@@ -2014,6 +2082,88 @@ async function salvarComentarioEditado() {
 
 document.getElementById('modal-editar-comentario')?.addEventListener('click', function(e) {
   if (e.target === this) this.classList.remove('show');
+});
+
+// =============================================
+// EDITAR / EXCLUIR QUESTÃO (admin)
+// =============================================
+let editGabaritoAtual = null;
+
+function abrirEditarQuestao(id) {
+  const q = db.questoes.find(q => q.id === id);
+  if (!q) return;
+  document.getElementById('edit-q-id').value = q.id;
+  document.getElementById('edit-q-enunciado').value = q.enunciado;
+  document.getElementById('edit-q-topico').value = q.topico || '';
+  document.getElementById('edit-q-banca').value = q.banca || '';
+  document.getElementById('edit-q-ano').value = q.ano || '';
+  document.getElementById('edit-q-comentario').value = q.comentario || '';
+  document.getElementById('edit-q-dificuldade').value = q.dificuldade || 'Médio';
+  const sel = document.getElementById('edit-q-assunto');
+  sel.innerHTML = ASSUNTOS.map(a => `<option value="${a}" ${a===q.assunto?'selected':''}>${a}</option>`).join('');
+  document.getElementById('edit-opcoes-form').innerHTML = ['A','B','C','D','E'].map(l =>
+    `<div class="option-row">
+      <div class="option-label">${l}</div>
+      <input class="form-input" style="flex:1" id="edit-opcao-${l}" value="${(q.opcoes[l]||'').replace(/"/g,'&quot;')}">
+    </div>`
+  ).join('');
+  editGabaritoAtual = q.gabarito;
+  document.querySelectorAll('#edit-gabarito-options .gabarito-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === q.gabarito);
+  });
+  document.getElementById('modal-editar-questao').classList.add('show');
+}
+
+function fecharEditarQuestao() {
+  document.getElementById('modal-editar-questao').classList.remove('show');
+}
+
+function setEditGabarito(l) {
+  editGabaritoAtual = l;
+  document.querySelectorAll('#edit-gabarito-options .gabarito-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === l);
+  });
+}
+
+async function salvarEdicaoQuestao() {
+  const id = document.getElementById('edit-q-id').value;
+  const enunciado = document.getElementById('edit-q-enunciado').value.trim();
+  if (!enunciado) { toast('Preencha o enunciado!', 'error'); return; }
+  if (!editGabaritoAtual) { toast('Selecione o gabarito!', 'error'); return; }
+  const opcoes = {};
+  for (const l of ['A','B','C','D','E']) {
+    opcoes[l] = document.getElementById('edit-opcao-'+l).value.trim();
+  }
+  const { db_fire, doc, updateDoc } = window._fire;
+  const updates = {
+    enunciado, opcoes, gabarito: editGabaritoAtual,
+    assunto: document.getElementById('edit-q-assunto').value,
+    topico: document.getElementById('edit-q-topico').value.trim(),
+    banca: document.getElementById('edit-q-banca').value.trim(),
+    ano: document.getElementById('edit-q-ano').value ? parseInt(document.getElementById('edit-q-ano').value) : null,
+    dificuldade: document.getElementById('edit-q-dificuldade').value,
+    comentario: document.getElementById('edit-q-comentario').value.trim(),
+  };
+  await updateDoc(doc(db_fire, 'questoes', id), updates);
+  const idx = db.questoes.findIndex(q => q.id === id);
+  if (idx !== -1) db.questoes[idx] = { ...db.questoes[idx], ...updates };
+  fecharEditarQuestao();
+  renderBanco();
+  toast('Questão atualizada!');
+}
+
+async function excluirQuestao(id) {
+  if (!confirm('Excluir esta questão permanentemente?')) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  await deleteDoc(doc(db_fire, 'questoes', id));
+  db.questoes = db.questoes.filter(q => q.id !== id);
+  updateBadge();
+  renderBanco();
+  toast('Questão excluída!', 'info');
+}
+
+document.getElementById('modal-editar-questao').addEventListener('click', function(e) {
+  if (e.target === this) fecharEditarQuestao();
 });
 
 // =============================================
