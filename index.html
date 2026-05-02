@@ -84,66 +84,139 @@ function mostrarBloqueio(user) {
 // =============================================
 // AUTH FUNCTIONS (globais)
 // =============================================
+window.fazerLogin = async function() {
+  const email = document.getElementById('login-email').value.trim();
+  const senha = document.getElementById('login-senha').value;
+  const btn = document.getElementById('btn-login');
+  if (!email || !senha) { authToast('Preencha e-mail e senha!', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    await signInWithEmailAndPassword(auth, email, senha);
+  } catch(e) {
+    authToast('E-mail ou senha incorretos!', 'error');
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+};
+
+window.fazerCadastro = async function() {
+  const email = document.getElementById('cad-email').value.trim();
+  const senha = document.getElementById('cad-senha').value;
+  const codigo = document.getElementById('cad-codigo').value.trim().toUpperCase();
+  const nome = document.getElementById('cad-nome').value.trim();
+  const btn = document.getElementById('btn-cadastrar');
+  if (!email || !senha || !codigo || !nome) { authToast('Preencha todos os campos!', 'error'); return; }
+  if (senha.length < 6) { authToast('Senha deve ter no mínimo 6 caracteres!', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Verificando código...';
+  try {
+    // Verifica código de acesso
+    const codigoSnap = await getDoc(doc(db_fire, 'codigos', codigo));
+    if (!codigoSnap.exists()) { authToast('Código de acesso inválido!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
+    const codigoData = codigoSnap.data();
+    if (codigoData.usado) { authToast('Este código já foi utilizado!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
+    const validade = codigoData.validade?.toDate ? codigoData.validade.toDate() : new Date(codigoData.validade);
+    if (validade < new Date()) { authToast('Código de acesso vencido!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
+    // Cria usuário no Auth
+    btn.textContent = 'Criando conta...';
+    let cred;
+    try {
+      cred = await createUserWithEmailAndPassword(auth, email, senha);
+    } catch(e) {
+      if (e.code === 'auth/email-already-in-use') authToast('E-mail já cadastrado!', 'error');
+      else authToast('Erro ao criar conta: ' + e.message, 'error');
+      btn.disabled=false; btn.textContent='Criar Conta';
+      return;
+    }
+    // Salva no Firestore — com rollback se falhar
+    try {
+      await setDoc(doc(db_fire, 'usuarios', cred.user.uid), {
+        nome, email, ativo: true,
+        validade: codigoData.validade,
+        plano: codigoData.plano || 'mensal',
+        codigoUsado: codigo,
+        criadoEm: serverTimestamp(),
+        dispositivos: []
+      });
+      // Marca código como usado
+      await updateDoc(doc(db_fire, 'codigos', codigo), { usado: true, usadoPor: email, usadoEm: serverTimestamp() });
+    } catch(e) {
+      // ⚠️ ROLLBACK: remove do Auth para não ficar usuário fantasma
+      await cred.user.delete();
+      authToast('Erro ao salvar dados. Tente novamente.', 'error');
+      btn.disabled=false; btn.textContent='Criar Conta';
+    }
+  } catch(e) {
+    authToast('Erro inesperado: ' + e.message, 'error');
+    btn.disabled=false; btn.textContent='Criar Conta';
+  }
+};
+
+window.fazerLogout = async function() {
+  if (confirm('Deseja sair da sua conta?')) {
+    await signOut(auth);
+    window._currentUser = null;
+    window._userData = null;
+  }
+};
+
+window.authToast = function(msg, tipo='success') {
+  const el = document.getElementById('auth-toast');
+  el.textContent = msg;
+  el.className = 'auth-toast show ' + tipo;
+  setTimeout(() => el.classList.remove('show'), 3500);
+};
+
+window.showAuthTab = function(tab) {
+  document.getElementById('auth-login').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('auth-cadastro').style.display = tab==='cadastro' ? 'block' : 'none';
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-tab').forEach(t => { if(t.dataset.tab===tab) t.classList.add('active'); });
+};
+
+// =============================================
+// ADMIN FUNCTIONS (globais)
+// =============================================
+window._todosAlunos = [];
+
 window.carregarAdmin = async function() {
   const lista = document.getElementById('admin-usuarios-list');
   lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Carregando...</p>';
   const snap = await getDocs(collection(db_fire, 'usuarios'));
   if (snap.empty) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum usuário.</p>'; return; }
-
   const agora = new Date();
-  const em7dias = new Date(agora.getTime() + 7*24*60*60*1000);
-
+  const em7 = new Date(agora.getTime() + 7*24*60*60*1000);
   window._todosAlunos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  // Atualiza stats
-  const ativos = window._todosAlunos.filter(u => {
-    const val = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade);
-    return u.ativo && val > agora;
-  }).length;
-  const vencendo = window._todosAlunos.filter(u => {
-    const val = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade);
-    return u.ativo && val > agora && val <= em7dias;
-  }).length;
-
+  const ativos = window._todosAlunos.filter(u => { const v = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade); return u.ativo && v > agora; }).length;
+  const vencendo = window._todosAlunos.filter(u => { const v = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade); return u.ativo && v > agora && v <= em7; }).length;
   const el1 = document.getElementById('admin-stat-ativos');
   const el2 = document.getElementById('admin-stat-vencendo');
   if (el1) el1.textContent = ativos;
   if (el2) el2.textContent = vencendo;
-
   renderAlunos(window._todosAlunos);
 };
 
 window.filtrarAlunos = function(busca) {
   const termo = busca.toLowerCase();
-  const filtrados = (window._todosAlunos || []).filter(u =>
-    (u.nome||'').toLowerCase().includes(termo) ||
-    (u.email||'').toLowerCase().includes(termo)
-  );
-  renderAlunos(filtrados);
+  renderAlunos((window._todosAlunos||[]).filter(u => (u.nome||'').toLowerCase().includes(termo)||(u.email||'').toLowerCase().includes(termo)));
 };
 
 window.renderAlunos = function(alunos) {
   const lista = document.getElementById('admin-usuarios-list');
   if (!alunos.length) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum aluno encontrado.</p>'; return; }
   const agora = new Date();
-  const em7dias = new Date(agora.getTime() + 7*24*60*60*1000);
-
+  const em7 = new Date(agora.getTime() + 7*24*60*60*1000);
   lista.innerHTML = alunos.map(u => {
     const val = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade);
     const vencido = val < agora;
-    const vencendoBreve = !vencido && val <= em7dias;
-    const diasRestantes = Math.ceil((val - agora) / (1000*60*60*24));
-
-    let statusColor = vencido ? 'var(--red)' : vencendoBreve ? 'var(--amber)' : 'var(--green)';
-    let statusText = vencido ? 'Vencido' : vencendoBreve ? `Vence em ${diasRestantes} dias` : `Ativo · vence ${val.toLocaleDateString('pt-BR')}`;
-    let statusEmoji = vencido ? '❌' : vencendoBreve ? '⚠️' : '✅';
-    let badgeHtml = vencendoBreve ? `<span style="font-size:10px;background:var(--amber-light);color:var(--amber);padding:2px 7px;border-radius:6px;font-weight:700;margin-left:6px">Vence em breve</span>` : '';
-
+    const vencendoBreve = !vencido && val <= em7;
+    const dias = Math.ceil((val - agora) / (1000*60*60*24));
+    const cor = vencido ? 'var(--red)' : vencendoBreve ? '#d97706' : 'var(--green)';
+    const status = vencido ? '❌ Vencido' : vencendoBreve ? `⚠️ Vence em ${dias} dias` : `✅ Ativo · vence ${val.toLocaleDateString('pt-BR')}`;
+    const badge = vencendoBreve ? `<span style="font-size:10px;background:#fffbeb;color:#d97706;padding:2px 7px;border-radius:6px;font-weight:700;margin-left:6px">Vence em breve</span>` : '';
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
       <div style="flex:1;min-width:200px">
-        <p style="font-size:13.5px;font-weight:600">${u.nome || '—'}${badgeHtml}</p>
+        <p style="font-size:13.5px;font-weight:600">${u.nome||'—'}${badge}</p>
         <p style="font-size:12px;color:var(--text-muted)">${u.email}</p>
-        <p style="font-size:11.5px;color:${statusColor}">${statusEmoji} ${statusText}</p>
+        <p style="font-size:11.5px;color:${cor}">${status}</p>
       </div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-success btn-sm" onclick="ativarUsuario('${u.id}', 30)">+30 dias</button>
@@ -172,28 +245,21 @@ window.desativarUsuario = async function(uid) {
 window.gerarCodigo = async function() {
   const dias = parseInt(document.getElementById('codigo-dias').value || '30');
   const plano = document.getElementById('codigo-plano').value || 'mensal';
-  const qtd = parseInt(document.getElementById('codigo-qtd').value || '1');
-  const expiraDias = parseInt(document.getElementById('codigo-expira').value || '0');
+  const qtd = parseInt(document.getElementById('codigo-qtd')?.value || '1');
+  const expiraDias = parseInt(document.getElementById('codigo-expira')?.value || '0');
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
   const codigos = [];
   for (let n = 0; n < qtd; n++) {
     let codigo = '';
     for (let i=0; i<8; i++) { if(i===4) codigo+='-'; codigo += chars[Math.floor(Math.random()*chars.length)]; }
-    const validade = new Date();
-    validade.setDate(validade.getDate() + dias);
-    const dadosCodigo = { usado: false, validade, plano, criadoEm: serverTimestamp(), diasAcesso: dias };
-    if (expiraDias > 0) {
-      const expira = new Date();
-      expira.setDate(expira.getDate() + expiraDias);
-      dadosCodigo.expiraCodigo = expira;
-    }
-    await setDoc(doc(db_fire, 'codigos', codigo), dadosCodigo);
+    const validade = new Date(); validade.setDate(validade.getDate() + dias);
+    const dados = { usado: false, validade, plano, criadoEm: serverTimestamp(), diasAcesso: dias };
+    if (expiraDias > 0) { const exp = new Date(); exp.setDate(exp.getDate() + expiraDias); dados.expiraCodigo = exp; }
+    await setDoc(doc(db_fire, 'codigos', codigo), dados);
     codigos.push(codigo);
   }
-
   const lista = document.getElementById('codigos-gerados-list');
-  lista.innerHTML = codigos.map(c => `
+  if (lista) lista.innerHTML = codigos.map(c => `
     <div style="display:flex;align-items:center;gap:12px;background:var(--blue-light);border-radius:10px;padding:12px 16px">
       <code style="font-size:20px;font-weight:800;letter-spacing:3px;color:var(--blue);flex:1">${c}</code>
       <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText('${c}');toast('Copiado!')">📋 Copiar</button>
@@ -213,31 +279,25 @@ window.carregarCodigos = async function() {
   lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Carregando...</p>';
   const snap = await getDocs(collection(db_fire, 'codigos'));
   if (snap.empty) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum código.</p>'; return; }
-
   const agora = new Date();
   const docs = snap.docs;
-  const disponiveis = docs.filter(d => !d.data().usado).length;
+  const disp = docs.filter(d => !d.data().usado).length;
   const usados = docs.filter(d => d.data().usado).length;
-
-  // Atualiza stats
-  const elDisp = document.getElementById('admin-stat-codigos-disp');
-  const elUsados = document.getElementById('admin-stat-codigos-usados');
-  if (elDisp) elDisp.textContent = disponiveis;
-  if (elUsados) elUsados.textContent = usados;
-
+  const elD = document.getElementById('admin-stat-codigos-disp');
+  const elU = document.getElementById('admin-stat-codigos-usados');
+  if (elD) elD.textContent = disp;
+  if (elU) elU.textContent = usados;
   lista.innerHTML = docs.map(d => {
     const c = d.data();
     const val = c.validade?.toDate ? c.validade.toDate() : new Date(c.validade);
     const expira = c.expiraCodigo?.toDate ? c.expiraCodigo.toDate() : c.expiraCodigo ? new Date(c.expiraCodigo) : null;
-    const codigoExpirado = expira && expira < agora && !c.usado;
+    const expirado = expira && expira < agora && !c.usado;
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <code style="font-size:15px;font-weight:700;letter-spacing:2px;color:${codigoExpirado?'var(--text-muted)':'var(--blue)'};flex:1;${codigoExpirado?'text-decoration:line-through':''}">${d.id}</code>
-      <span class="tag ${c.usado?'tag-red':codigoExpirado?'tag-gray':'tag-green'}">
-        ${c.usado ? '✗ Usado por '+c.usadoPor : codigoExpirado ? 'Expirado' : '✓ Disponível'}
-      </span>
+      <code style="font-size:15px;font-weight:700;letter-spacing:2px;color:${expirado?'var(--text-muted)':'var(--blue)'};flex:1;${expirado?'text-decoration:line-through':''}">${d.id}</code>
+      <span class="tag ${c.usado?'tag-red':expirado?'tag-gray':'tag-green'}">${c.usado?'✗ Usado por '+c.usadoPor:expirado?'Expirado':'✓ Disponível'}</span>
       <span class="tag tag-gray">${c.diasAcesso} dias · acesso até ${val.toLocaleDateString('pt-BR')}</span>
-      ${expira && !c.usado ? `<span class="tag tag-amber">Código expira ${expira.toLocaleDateString('pt-BR')}</span>` : ''}
-      ${!c.usado ? `<button class="btn btn-danger btn-sm" onclick="deletarCodigo('${d.id}')">🗑</button>` : ''}
+      ${expira&&!c.usado?`<span class="tag tag-amber">Cód. expira ${expira.toLocaleDateString('pt-BR')}</span>`:''}
+      ${!c.usado?`<button class="btn btn-danger btn-sm" onclick="deletarCodigo('${d.id}')">🗑</button>`:''}
     </div>`;
   }).join('');
 };
@@ -814,55 +874,26 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
       <div><h2>🤖 Gerar com IA</h2><p>Cole um texto base e a IA gera questões contextualizadas</p></div>
     </div>
     <div class="page-body" style="max-width:860px">
-
       <div class="form-section">
         <h3>Configurar geração</h3>
         <div class="form-row" style="margin-bottom:14px">
-          <div class="form-group">
-            <label>Matéria</label>
-            <select class="form-select" id="ai-assunto" onchange="atualizarTopicosIA()"></select>
-          </div>
-          <div class="form-group">
-            <label>Tópico</label>
-            <select class="form-select" id="ai-topico"></select>
-          </div>
-          <div class="form-group">
-            <label>Banca</label>
-            <select class="form-select" id="ai-banca">
-              <option value="CESPE">CESPE/CEBRASPE</option>
-              <option value="FCC">FCC</option>
-              <option value="VUNESP">VUNESP</option>
-              <option value="AOCP">AOCP</option>
-              <option value="IBFC">IBFC</option>
-              <option value="Inédita">Inédita</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Quantidade</label>
-            <select class="form-select" id="ai-quantidade">
-              <option value="3">3 questões</option>
-              <option value="5" selected>5 questões</option>
-              <option value="10">10 questões</option>
-              <option value="15">15 questões</option>
-            </select>
-          </div>
+          <div class="form-group"><label>Matéria</label><select class="form-select" id="ai-assunto" onchange="atualizarTopicosIA()"></select></div>
+          <div class="form-group"><label>Tópico</label><select class="form-select" id="ai-topico"></select></div>
+          <div class="form-group"><label>Banca</label><select class="form-select" id="ai-banca"><option value="CESPE">CESPE/CEBRASPE</option><option value="FCC">FCC</option><option value="VUNESP">VUNESP</option><option value="AOCP">AOCP</option><option value="IBFC">IBFC</option><option value="Inédita">Inédita</option></select></div>
+          <div class="form-group"><label>Quantidade</label><select class="form-select" id="ai-quantidade"><option value="3">3 questões</option><option value="5" selected>5 questões</option><option value="10">10 questões</option><option value="15">15 questões</option></select></div>
         </div>
-
         <div class="form-group" style="margin-bottom:14px">
           <label>Texto base <span style="font-weight:400;font-size:11.5px;color:var(--text-muted)">(artigo de lei, trecho histórico, dado geográfico, tabela...)</span></label>
-          <textarea class="form-textarea" id="ai-texto-base" style="min-height:160px;font-size:13px;line-height:1.6"
-            placeholder="Cole aqui o texto base para geração das questões.
+          <textarea class="form-textarea" id="ai-texto-base" style="min-height:160px;font-size:13px;line-height:1.6" placeholder="Cole aqui o texto base para geração das questões.
 
 Exemplos:
 • Art. 45 — São penalidades disciplinares: I - advertência; II - suspensão (máx. 90 dias); III - demissão...
-• Cap. 3 — A Batalha do Amapá (1895): conflito entre Brasil e França pelo território do Amapá...
-• IBGE 2022: O Amapá possui 733.759 habitantes, sendo o estado menos populoso do Norte..."></textarea>
-          <p style="font-size:11.5px;color:var(--text-muted);margin-top:6px">A IA gera automaticamente questões fáceis, médias e difíceis baseadas neste conteúdo. Quanto mais rico o texto, melhores as questões.</p>
+• Cap. 3 — A Batalha do Amapá (1895): conflito entre Brasil e França pelo território...
+• IBGE 2022: O Amapá possui 733.759 habitantes..."></textarea>
+          <p style="font-size:11.5px;color:var(--text-muted);margin-top:6px">A IA gera automaticamente questões fáceis, médias e difíceis. Quanto mais rico o texto, melhores as questões.</p>
         </div>
-
         <button class="btn btn-primary btn-lg" onclick="gerarComIA()" id="btn-gerar-ia">⚡ Gerar Questões</button>
       </div>
-
       <div class="loading-spinner" id="ai-loading">
         <div class="spinner"></div>
         <p style="color:var(--text-muted);font-size:13.5px;margin-top:8px">Gerando questões com IA...</p>
@@ -875,6 +906,7 @@ Exemplos:
   <div class="tab-content" id="tab-stats">
     <div class="page-header">
       <div><h2>📊 Estatísticas</h2><p>Seu desempenho detalhado</p></div>
+      <button class="btn btn-danger btn-sm" onclick="resetarProgresso()">🗑 Resetar Progresso</button>
     </div>
     <div class="page-body">
       <div class="stats-grid" id="stats-grid"></div>
@@ -902,12 +934,9 @@ Exemplos:
       <div><h2>📥 Importar JSON</h2><p>Importe uma bateria de questões em formato JSON</p></div>
     </div>
     <div class="page-body" style="max-width:700px">
-
-      <!-- Drop zone -->
       <div class="form-section">
         <h3>Arquivo JSON</h3>
-        <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s"
-          onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="font-size:28px;margin-bottom:8px">📂</div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Arraste o arquivo JSON ou clique para selecionar</div>
           <div style="font-size:12px;color:var(--text-muted)">ou cole o JSON no campo abaixo</div>
@@ -918,15 +947,12 @@ Exemplos:
           <span style="font-size:12px;color:var(--text-muted)">ou cole o JSON</span>
           <div style="flex:1;height:1px;background:var(--border)"></div>
         </div>
-        <textarea class="form-textarea" id="import-json" style="min-height:120px;font-family:monospace;font-size:12px"
-          placeholder='[{"enunciado":"...","opcoes":{"A":"...","B":"..."},"gabarito":"A","assunto":"Lei Orgânica PC-AP"}]'></textarea>
+        <textarea class="form-textarea" id="import-json" style="min-height:120px;font-family:monospace;font-size:12px" placeholder='[{"enunciado":"...","opcoes":{"A":"...","B":"..."},"gabarito":"A","assunto":"Lei Orgânica PC-AP"}]'></textarea>
         <div style="display:flex;gap:10px;margin-top:12px">
           <button class="btn btn-primary" onclick="validarImport()">🔍 Validar e Pré-visualizar</button>
           <button class="btn btn-ghost" onclick="document.getElementById('import-json').value='';document.getElementById('import-preview').innerHTML=''">Limpar</button>
         </div>
       </div>
-
-      <!-- Formato -->
       <div class="form-section">
         <h3>Campos aceitos</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -941,92 +967,38 @@ Exemplos:
           <div style="background:var(--surface);border-radius:8px;padding:10px 12px">
             <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Opcionais</div>
             <div style="font-size:12px;color:var(--text);line-height:1.8">
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">assunto</code><br>
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">topico</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">dificuldade</code><br>
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">banca</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">ano</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">comentario</code>
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">assunto</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">topico</code><br>
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">dificuldade</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">banca</code><br>
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">ano</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">comentario</code>
             </div>
           </div>
         </div>
       </div>
-
       <div id="import-preview"></div>
     </div>
   </div>
 
   <!-- ADMIN -->
   <div class="tab-content" id="tab-admin">
-    <div class="page-header">
-      <div><h2>👑 Painel Admin</h2><p>Gerencie alunos e códigos de acesso</p></div>
-    </div>
+    <div class="page-header"><div><h2>👑 Painel Admin</h2><p>Gerencie alunos e códigos de acesso</p></div></div>
     <div class="page-body">
-
-      <!-- CARDS RESUMO -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px">
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#ecfdf5">👥</div>
-          <div class="stat-info"><h3 id="admin-stat-ativos">—</h3><p>Alunos ativos</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#fffbeb">⚠️</div>
-          <div class="stat-info"><h3 id="admin-stat-vencendo">—</h3><p>Vencem em 7 dias</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#eff6ff">🔑</div>
-          <div class="stat-info"><h3 id="admin-stat-codigos-disp">—</h3><p>Códigos disponíveis</p></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#f5f3ff">✅</div>
-          <div class="stat-info"><h3 id="admin-stat-codigos-usados">—</h3><p>Códigos usados</p></div>
-        </div>
+        <div class="stat-card"><div class="stat-icon" style="background:#ecfdf5">👥</div><div class="stat-info"><h3 id="admin-stat-ativos">—</h3><p>Alunos ativos</p></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#fffbeb">⚠️</div><div class="stat-info"><h3 id="admin-stat-vencendo">—</h3><p>Vencem em 7 dias</p></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#eff6ff">🔑</div><div class="stat-info"><h3 id="admin-stat-codigos-disp">—</h3><p>Códigos disponíveis</p></div></div>
+        <div class="stat-card"><div class="stat-icon" style="background:#f5f3ff">✅</div><div class="stat-info"><h3 id="admin-stat-codigos-usados">—</h3><p>Códigos usados</p></div></div>
       </div>
-
-      <!-- GERAR CÓDIGO -->
       <div class="form-section" style="margin-bottom:14px">
         <h3>🔑 Gerar Código de Acesso</h3>
         <div class="form-row" style="margin-bottom:12px">
-          <div class="form-group">
-            <label>Dias de acesso</label>
-            <select class="form-select" id="codigo-dias">
-              <option value="30">30 dias (mensal)</option>
-              <option value="90">90 dias (trimestral)</option>
-              <option value="180">180 dias (semestral)</option>
-              <option value="365">365 dias (anual)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Plano</label>
-            <select class="form-select" id="codigo-plano">
-              <option value="mensal">Mensal</option>
-              <option value="trimestral">Trimestral</option>
-              <option value="semestral">Semestral</option>
-              <option value="anual">Anual</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Quantidade</label>
-            <select class="form-select" id="codigo-qtd">
-              <option value="1">1 código</option>
-              <option value="5">5 códigos</option>
-              <option value="10">10 códigos</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Código expira em</label>
-            <select class="form-select" id="codigo-expira">
-              <option value="0">Sem expiração</option>
-              <option value="7">7 dias</option>
-              <option value="15">15 dias</option>
-              <option value="30">30 dias</option>
-            </select>
-          </div>
+          <div class="form-group"><label>Dias de acesso</label><select class="form-select" id="codigo-dias"><option value="30">30 dias (mensal)</option><option value="90">90 dias (trimestral)</option><option value="180">180 dias (semestral)</option><option value="365">365 dias (anual)</option></select></div>
+          <div class="form-group"><label>Plano</label><select class="form-select" id="codigo-plano"><option value="mensal">Mensal</option><option value="trimestral">Trimestral</option><option value="semestral">Semestral</option><option value="anual">Anual</option></select></div>
+          <div class="form-group"><label>Quantidade</label><select class="form-select" id="codigo-qtd"><option value="1">1 código</option><option value="5">5 códigos</option><option value="10">10 códigos</option></select></div>
+          <div class="form-group"><label>Código expira em</label><select class="form-select" id="codigo-expira"><option value="0">Sem expiração</option><option value="7">7 dias</option><option value="15">15 dias</option><option value="30">30 dias</option></select></div>
         </div>
         <button class="btn btn-primary" onclick="gerarCodigo()">⚡ Gerar Código(s)</button>
-        <div id="codigo-result" style="display:none;margin-top:14px">
-          <div id="codigos-gerados-list" style="display:flex;flex-direction:column;gap:8px"></div>
-        </div>
+        <div id="codigo-result" style="display:none;margin-top:14px"><div id="codigos-gerados-list" style="display:flex;flex-direction:column;gap:8px"></div></div>
       </div>
-
-      <!-- LISTA CÓDIGOS -->
       <div class="form-section" style="margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <h3 style="margin:0;border:none;padding:0">🗝 Códigos Gerados</h3>
@@ -1034,24 +1006,18 @@ Exemplos:
         </div>
         <div id="admin-codigos-list"><p style="color:var(--text-muted);font-size:13px">Clique em Atualizar para carregar.</p></div>
       </div>
-
-      <!-- LISTA ALUNOS -->
       <div class="form-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <h3 style="margin:0;border:none;padding:0">👥 Alunos Cadastrados</h3>
           <div style="display:flex;gap:8px;align-items:center">
-            <input class="form-input" id="busca-aluno" placeholder="Buscar por nome ou email..."
-              style="width:240px;font-size:13px;padding:6px 10px"
-              oninput="filtrarAlunos(this.value)">
+            <input class="form-input" id="busca-aluno" placeholder="Buscar por nome ou email..." style="width:220px;font-size:13px;padding:6px 10px" oninput="filtrarAlunos(this.value)">
             <button class="btn btn-ghost btn-sm" onclick="carregarAdmin()">🔄 Atualizar</button>
           </div>
         </div>
         <div id="admin-usuarios-list"><p style="color:var(--text-muted);font-size:13px">Clique em Atualizar para carregar.</p></div>
       </div>
-
     </div>
   </div>
-
 </div><!-- /main -->
 </div><!-- /app-screen -->
 
@@ -1135,8 +1101,6 @@ Exemplos:
 
 <div class="modal-overlay" id="modal-settings">
   <div class="modal" style="max-width:600px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;padding:0">
-
-    <!-- Header -->
     <div style="padding:18px 20px 0;border-bottom:1px solid var(--border)">
       <h3 style="margin-bottom:12px">⚙️ Configurações</h3>
       <div style="display:flex;gap:0">
@@ -1145,41 +1109,24 @@ Exemplos:
         <button class="settings-tab" onclick="showSettingsTab('dados')" id="stab-dados">🗃 Dados</button>
       </div>
     </div>
-
-    <!-- ABA: MATÉRIAS -->
     <div id="stab-content-materias" style="flex:1;overflow-y:auto;padding:18px 20px">
-      <!-- Stats -->
       <div style="display:flex;gap:10px;margin-bottom:18px">
-        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px">
-          <div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-materias-count">0</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Matérias</div>
-        </div>
-        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px">
-          <div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-questoes-count">0</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Questões</div>
-        </div>
-        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px">
-          <div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-topicos-count">0</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Tópicos</div>
-        </div>
+        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px"><div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-materias-count">0</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">Matérias</div></div>
+        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px"><div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-questoes-count">0</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">Questões</div></div>
+        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px"><div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-topicos-count">0</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px">Tópicos</div></div>
       </div>
-
       <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-mid);margin-bottom:10px">Matérias</p>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="form-input" id="nova-materia" placeholder="Nome da nova matéria..." style="flex:1"
-          onkeydown="if(event.key==='Enter'){adicionarMateria(this.value);this.value=''}">
+        <input class="form-input" id="nova-materia" placeholder="Nome da nova matéria..." style="flex:1" onkeydown="if(event.key==='Enter'){adicionarMateria(this.value);this.value=''}">
         <button class="btn btn-primary btn-sm" onclick="adicionarMateria(document.getElementById('nova-materia').value);document.getElementById('nova-materia').value=''">+ Adicionar</button>
       </div>
       <div id="materias-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 12px"></div>
-      <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];localStorage.setItem('pcap_materias',JSON.stringify(ASSUNTOS));populateSelects();renderMateriasList();toast('Matérias restauradas!','info')"
-        style="margin-top:8px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
+      <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];localStorage.setItem('pcap_materias',JSON.stringify(ASSUNTOS));populateSelects();renderMateriasList();toast('Matérias restauradas!','info')" style="margin-top:8px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
     </div>
-
-    <!-- ABA: INTEGRAÇÕES -->
     <div id="stab-content-integracoes" style="display:none;flex:1;overflow-y:auto;padding:18px 20px">
       <div style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px">
         <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Anthropic (Claude)</p>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Usada para gerar questões com IA. Obtenha em <strong>console.anthropic.com</strong></p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Para gerar questões com IA. Obtenha em <strong>console.anthropic.com</strong></p>
         <div style="display:flex;gap:8px">
           <input class="form-input" type="password" id="settings-api-key" placeholder="sk-ant-api03-..." style="flex:1">
           <button class="btn btn-primary btn-sm" onclick="saveSettings()">Salvar</button>
@@ -1196,46 +1143,28 @@ Exemplos:
         <div id="gemini-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>
       </div>
     </div>
-
-    <!-- ABA: DADOS -->
     <div id="stab-content-dados" style="display:none;flex:1;overflow-y:auto;padding:18px 20px">
       <div style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px">
         <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Meu progresso</p>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Remove suas respostas e estatísticas. As questões do banco não são afetadas.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Remove suas respostas e estatísticas. As questões não são afetadas.</p>
         <div style="border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:12px">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">Resetar meu progresso</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove todas as respostas e histórico de revisão</div>
-          </div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">Resetar meu progresso</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove todas as respostas e histórico</div></div>
           <button class="btn btn-danger btn-sm" onclick="resetarProgresso();closeSettings()">Resetar</button>
         </div>
       </div>
       <div>
-        <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Banco de questões <span style="font-size:11px;background:var(--red-light);color:var(--red);padding:2px 6px;border-radius:6px;margin-left:4px">Admin</span></p>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Ações permanentes e irreversíveis sobre as questões.</p>
+        <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">Banco de questões <span style="font-size:11px;background:var(--red-light);color:var(--red);padding:2px 6px;border-radius:6px;margin-left:4px">Admin</span></p>
         <div style="border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">Apagar por fonte</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove questões de uma origem específica</div>
-          </div>
-          <select class="form-select" id="delete-fonte-select" style="width:auto;font-size:12px;padding:5px 8px">
-            <option value="importado">Importado</option>
-            <option value="manual">Manual</option>
-            <option value="ia">IA</option>
-          </select>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">Apagar por fonte</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove questões de uma origem específica</div></div>
+          <select class="form-select" id="delete-fonte-select" style="width:auto;font-size:12px;padding:5px 8px"><option value="importado">Importado</option><option value="manual">Manual</option><option value="ia">IA</option></select>
           <button class="btn btn-danger btn-sm" onclick="apagarPorFonte()">Apagar</button>
         </div>
         <div style="border:1px solid var(--red);border-radius:8px;padding:12px;display:flex;align-items:center;gap:12px">
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600;color:var(--red)">Apagar TODAS as questões</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove permanentemente todo o banco</div>
-          </div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--red)">Apagar TODAS as questões</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove permanentemente todo o banco</div></div>
           <button class="btn btn-danger btn-sm" onclick="apagarTodasQuestoes()">Apagar tudo</button>
         </div>
       </div>
     </div>
-
-    <!-- Footer -->
     <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeSettings()">Fechar</button>
     </div>
@@ -1316,71 +1245,47 @@ async function removerMateria(nome) {
 function renderMateriasList() {
   const el = document.getElementById('materias-list');
   if (!el) return;
-  if (!ASSUNTOS.length) {
-    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:12px 0">Nenhuma matéria cadastrada.</p>';
-    return;
-  }
+  if (!ASSUNTOS.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:12px 0">Nenhuma matéria cadastrada.</p>'; return; }
   el.innerHTML = ASSUNTOS.map((a, idx) => {
     const qs = db.questoes.filter(q => q.assunto === a);
     const count = qs.length;
-    const safe = a.replace(/'/g, "\\'");
-    const topicos = [...new Set(qs.filter(q => q.topico).map(q => q.topico))].sort();
-    const topicosDB = db.topicos[a] || [];
-    const todosTopicos = [...new Set([...topicos, ...topicosDB])].sort();
-    const topicosHTML = todosTopicos.map(t => {
-      const tCount = qs.filter(q => q.topico === t).length;
+    const safe = a.replace(/'/g, "\'");
+    const topicosDB = (db.topicos && db.topicos[a]) || [];
+    const topicosQ = [...new Set(qs.filter(q=>q.topico).map(q=>q.topico))];
+    const todos = [...new Set([...topicosDB, ...topicosQ])].sort();
+    const topicosHTML = todos.map(t => {
+      const tCount = qs.filter(q=>q.topico===t).length;
       const tSafe = t.replace(/'/g, "\'");
       return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border)">
         <span style="flex:1;font-size:12.5px;color:var(--text-mid)">${t}</span>
         <span style="font-size:11px;color:var(--text-muted)">${tCount}q</span>
-        <button onclick="renomearTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:1px 5px" title="Renomear">✏️</button>
-        <button onclick="removerTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:1px 5px" title="Remover">🗑</button>
+        <button onclick="renomearTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:1px 5px">✏️</button>
+        <button onclick="removerTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:1px 5px">🗑</button>
       </div>`;
     }).join('') + `<div style="display:flex;gap:6px;margin-top:6px;padding-top:4px">
       <input id="novo-topico-${idx}" class="form-input" style="flex:1;font-size:12px;padding:5px 8px" placeholder="Novo tópico..." onkeydown="if(event.key==='Enter'){adicionarTopico('${safe}',this.value).then(()=>{this.value='';})}">
-      <button onclick="adicionarTopico('${safe}',document.getElementById('novo-topico-${idx}').value).then(()=>{document.getElementById('novo-topico-${idx}').value=''})"
-        style="padding:5px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap">+ Adicionar</button>
+      <button onclick="adicionarTopico('${safe}',document.getElementById('novo-topico-${idx}').value).then(()=>{document.getElementById('novo-topico-${idx}').value=''})" style="padding:5px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap">+ Adicionar</button>
     </div>`;
     return `<div style="border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px;padding:9px 0;cursor:pointer" onclick="toggleMateriaTopicos('mtop-${idx}','mchev-${idx}')">
         <span style="font-size:12px;color:var(--text-muted);transition:transform .2s" id="mchev-${idx}">▶</span>
         <span style="flex:1;font-size:13.5px;font-weight:600;color:var(--text)">${a}</span>
-        ${count ? `<span class="tag tag-blue">${count}q</span>` : '<span style="font-size:11px;color:var(--text-muted)">0q</span>'}
-        <button onclick="event.stopPropagation();renomearMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:2px 5px" title="Renomear">✏️</button>
-        <button onclick="event.stopPropagation();removerMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;padding:2px 5px" title="Remover">🗑</button>
+        <span style="font-size:11px;color:var(--text-muted)">${count}q</span>
+        <button onclick="event.stopPropagation();renomearMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:2px 5px">✏️</button>
+        <button onclick="event.stopPropagation();removerMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;padding:2px 5px">🗑</button>
       </div>
-      <div id="mtop-${idx}" style="display:none;background:var(--surface);border-radius:8px;margin:0 0 8px 16px;padding:4px 10px">
-        ${topicosHTML}
-      </div>
+      <div id="mtop-${idx}" style="display:none;background:var(--surface);border-radius:8px;margin:0 0 8px 16px;padding:4px 10px">${topicosHTML}</div>
     </div>`;
   }).join('');
 }
 
-function toggleMateriaTopicos(contentId, chevId) {
-  const c = document.getElementById(contentId);
-  const ch = document.getElementById(chevId);
+function toggleMateriaTopicos(cid, chid) {
+  const c = document.getElementById(cid);
+  const ch = document.getElementById(chid);
   if (!c) return;
   const open = c.style.display === 'none';
   c.style.display = open ? 'block' : 'none';
   if (ch) ch.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
-}
-
-async function renomearTopico(assunto, topicoAntigo) {
-  const novo = prompt(`Renomear tópico "\${topicoAntigo}" para:`, topicoAntigo);
-  if (!novo || novo.trim() === topicoAntigo) return;
-  const novoTrimmed = novo.trim();
-  // Atualiza questões localmente
-  db.questoes.forEach(q => {
-    if (q.assunto === assunto && q.topico === topicoAntigo) q.topico = novoTrimmed;
-  });
-  // Atualiza no Firestore
-  const { db_fire, doc, updateDoc } = window._fire;
-  const updates = db.questoes.filter(q => q.assunto === assunto && q.topico === novoTrimmed);
-  for (const q of updates) {
-    await updateDoc(doc(db_fire, 'questoes', q.id), { topico: novoTrimmed });
-  }
-  renderMateriasList();
-  toast(`Tópico renomeado!`);
 }
 
 // =============================================
@@ -1390,7 +1295,7 @@ let db = {
   questoes: [],
   respostas: [],
   settings: JSON.parse(localStorage.getItem('pcap_settings') || '{}'),
-  topicos: {}, // { assunto: [topico1, topico2, ...] }
+  topicos: {},
 };
 
 function isAdmin() {
@@ -1433,6 +1338,69 @@ async function carregarMaterias() {
     else ASSUNTOS = [...MATERIAS_DEFAULT];
   }
 }
+
+function materiaId(nome) {
+  return nome.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100);
+}
+
+async function carregarTopicos() {
+  db.topicos = {};
+  try {
+    const { db_fire, collection, getDocs } = window._fire;
+    const snap = await getDocs(collection(db_fire, 'topicos'));
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!db.topicos[data.assunto]) db.topicos[data.assunto] = [];
+      if (!db.topicos[data.assunto].includes(data.topico)) db.topicos[data.assunto].push(data.topico);
+    });
+    Object.keys(db.topicos).forEach(a => db.topicos[a].sort());
+    localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  } catch(e) {
+    const cached = JSON.parse(localStorage.getItem('pcap_topicos') || 'null');
+    if (cached) db.topicos = cached;
+  }
+}
+
+async function adicionarTopico(assunto, topico) {
+  topico = topico.trim();
+  if (!topico) { toast('Digite um nome!', 'error'); return; }
+  if (!db.topicos[assunto]) db.topicos[assunto] = [];
+  if (db.topicos[assunto].includes(topico)) { toast('Tópico já existe!', 'error'); return; }
+  db.topicos[assunto].push(topico);
+  db.topicos[assunto].sort();
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  if (isAdmin() && window._fire) {
+    const { db_fire, doc, setDoc } = window._fire;
+    await setDoc(doc(db_fire, 'topicos', materiaId(assunto) + '__' + materiaId(topico)), { assunto, topico });
+  }
+  renderMateriasList();
+  populateTopicosSelect(assunto);
+  toast(`Tópico "${topico}" adicionado!`);
+}
+
+async function removerTopico(assunto, topico) {
+  if (!confirm(`Remover tópico "${topico}"?`)) return;
+  if (db.topicos[assunto]) db.topicos[assunto] = db.topicos[assunto].filter(t => t !== topico);
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  if (isAdmin() && window._fire) {
+    const { db_fire, doc, deleteDoc } = window._fire;
+    await deleteDoc(doc(db_fire, 'topicos', materiaId(assunto) + '__' + materiaId(topico)));
+  }
+  renderMateriasList();
+  toast('Tópico removido!', 'info');
+}
+
+async function renomearTopico(assunto, topicoAntigo) {
+  const novo = prompt(`Renomear "${topicoAntigo}" para:`, topicoAntigo);
+  if (!novo || novo.trim() === topicoAntigo) return;
+  const novoTrimmed = novo.trim();
+  if (db.topicos[assunto]) db.topicos[assunto] = db.topicos[assunto].map(t => t === topicoAntigo ? novoTrimmed : t);
+  db.questoes.forEach(q => { if (q.assunto === assunto && q.topico === topicoAntigo) q.topico = novoTrimmed; });
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  renderMateriasList();
+  toast('Tópico renomeado!');
+}
+
 
 // Salva questão no Firestore (só admin)
 async function salvarQuestaoFirestore(q) {
@@ -1479,75 +1447,6 @@ async function renomearMateriaFirestore(nomeAntigo, nomeNovo) {
   await deleteDoc(doc(db_fire, 'materias', materiaId(nomeAntigo)));
 }
 
-// =============================================
-// TÓPICOS — Firestore
-// =============================================
-function topicoId(assunto, topico) {
-  return materiaId(assunto) + '__' + materiaId(topico);
-}
-
-async function carregarTopicos() {
-  try {
-    const { db_fire, collection, getDocs } = window._fire;
-    const snap = await getDocs(collection(db_fire, 'topicos'));
-    db.topicos = {};
-    snap.docs.forEach(d => {
-      const data = d.data();
-      if (!db.topicos[data.assunto]) db.topicos[data.assunto] = [];
-      if (!db.topicos[data.assunto].includes(data.topico)) {
-        db.topicos[data.assunto].push(data.topico);
-      }
-    });
-    // Ordena
-    Object.keys(db.topicos).forEach(a => db.topicos[a].sort());
-    // Salva cache
-    localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
-  } catch(e) {
-    const cached = JSON.parse(localStorage.getItem('pcap_topicos') || 'null');
-    if (cached) db.topicos = cached;
-  }
-}
-
-async function adicionarTopico(assunto, topico) {
-  topico = topico.trim();
-  if (!topico) { toast('Digite um nome para o tópico!', 'error'); return; }
-  if (!db.topicos[assunto]) db.topicos[assunto] = [];
-  if (db.topicos[assunto].includes(topico)) { toast('Tópico já existe!', 'error'); return; }
-  db.topicos[assunto].push(topico);
-  db.topicos[assunto].sort();
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
-  if (isAdmin()) {
-    const { db_fire, doc, setDoc } = window._fire;
-    await setDoc(doc(db_fire, 'topicos', topicoId(assunto, topico)), { assunto, topico });
-  }
-  renderMateriasList();
-  populateTopicosSelect(assunto);
-  toast(`Tópico "${topico}" adicionado!`);
-}
-
-async function removerTopico(assunto, topico) {
-  if (!confirm(`Remover tópico "${topico}"?`)) return;
-  if (db.topicos[assunto]) {
-    db.topicos[assunto] = db.topicos[assunto].filter(t => t !== topico);
-  }
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
-  if (isAdmin()) {
-    const { db_fire, doc, deleteDoc } = window._fire;
-    await deleteDoc(doc(db_fire, 'topicos', topicoId(assunto, topico)));
-  }
-  renderMateriasList();
-  populateTopicosSelect(assunto);
-  toast('Tópico removido!', 'info');
-}
-
-async function garantirTopico(assunto, topico) {
-  if (!topico || !assunto) return;
-  if (!db.topicos[assunto]) db.topicos[assunto] = [];
-  if (!db.topicos[assunto].includes(topico)) {
-    await adicionarTopico(assunto, topico);
-  }
-}
-
 // Atualiza comentário de questão (só admin)
 async function atualizarComentarioFirestore(qid, comentario) {
   if (!isAdmin()) return;
@@ -1567,11 +1466,9 @@ function genId() {
 }
 
 function getTopicos(assunto) {
-  const fromDB = db.topicos[assunto] || [];
-  const fromQuestoes = assunto
-    ? db.questoes.filter(q => q.assunto === assunto && q.topico).map(q => q.topico)
-    : db.questoes.filter(q => q.topico).map(q => q.topico);
-  return [...new Set([...fromDB, ...fromQuestoes])].sort();
+  const qs = assunto ? db.questoes.filter(q => q.assunto === assunto) : db.questoes;
+  const topicos = [...new Set(qs.map(q => q.topico).filter(Boolean))].sort();
+  return topicos;
 }
 
 function atualizarTopicosBanco() {
@@ -1631,23 +1528,10 @@ async function init() {
   // Carrega dados do Firestore
   await carregarQuestoes();
   await carregarRespostas();
-  // Sincroniza tópicos das questões importadas
-  sincronizarTopicosDeQuestoes();
   updateBadge();
   renderInicio();
-  // API key carregada ao abrir settings
-}
-
-function sincronizarTopicosDeQuestoes() {
-  // Garante que tópicos presentes nas questões existam em db.topicos (sem salvar no Firestore)
-  db.questoes.forEach(q => {
-    if (!q.assunto || !q.topico) return;
-    if (!db.topicos[q.assunto]) db.topicos[q.assunto] = [];
-    if (!db.topicos[q.assunto].includes(q.topico)) {
-      db.topicos[q.assunto].push(q.topico);
-    }
-  });
-  Object.keys(db.topicos).forEach(a => db.topicos[a].sort());
+  if (db.settings.apiKey)
+    document.getElementById('settings-api-key').value = db.settings.apiKey;
 }
 
 function populateSelects() {
@@ -1657,7 +1541,6 @@ function populateSelects() {
     const first = el.options[0]?.outerHTML || '';
     el.innerHTML = first + ASSUNTOS.map(a => `<option value="${a}">${a}</option>`).join('');
   });
-  // cad-assunto change triggers topico update
   const cadAssunto = document.getElementById('cad-assunto');
   if (cadAssunto && !cadAssunto._topicoBound) {
     cadAssunto._topicoBound = true;
@@ -1670,7 +1553,7 @@ function populateSelects() {
 function populateTopicosSelect(assunto) {
   const el = document.getElementById('cad-topico');
   if (!el) return;
-  const topicos = db.topicos[assunto] || [];
+  const topicos = (db.topicos && db.topicos[assunto]) || [];
   el.innerHTML = topicos.length
     ? topicos.map(t => `<option value="${t}">${t}</option>`).join('')
     : '<option value="">— Sem tópicos cadastrados —</option>';
@@ -2028,99 +1911,12 @@ function limparForm() {
 // =============================================
 // GERAR COM IA
 // =============================================
-function atualizarTopicosIA() {
-  const assunto = document.getElementById('ai-assunto').value;
-  const el = document.getElementById('ai-topico');
-  if (!el) return;
-  const topicos = db.topicos[assunto] || getTopicos(assunto);
-  el.innerHTML = topicos.length
-    ? topicos.map(t => `<option value="${t}">${t}</option>`).join('')
-    : '<option value="">— Sem tópicos —</option>';
-}
-
-function buildPromptIA(assunto, topico, banca, quantidade, textoBase) {
-  const estilosBanca = {
-    'CESPE': 'questões de múltipla escolha com 5 alternativas (A a E), no estilo CESPE/CEBRASPE: enunciados precisos, alternativas plausíveis mas com erros sutis, linguagem técnica e objetiva',
-    'FCC': 'questões de múltipla escolha com 5 alternativas (A a E), no estilo FCC: linguagem próxima ao texto legal, alternativas baseadas na letra da lei, sem interpretação muito subjetiva',
-    'VUNESP': 'questões de múltipla escolha com 5 alternativas (A a E), no estilo VUNESP: linguagem direta, alternativas claras, foco em compreensão do texto normativo',
-    'AOCP': 'questões de múltipla escolha com 5 alternativas (A a E), no estilo AOCP: foco estrito na letra da lei, questões objetivas, alternativas com trocas de palavras-chave',
-    'IBFC': 'questões de múltipla escolha com 5 alternativas (A a E), no estilo IBFC: enunciados moderados, alternativas equilibradas, mistura letra da lei com interpretação',
-    'Inédita': 'questões de múltipla escolha com 5 alternativas (A a E), estilo equilibrado e didático'
-  };
-  const estiloBanca = estilosBanca[banca] || estilosBanca['Inédita'];
-
-  return `Você é um professor especialista em concursos públicos para a Polícia Civil do Amapá (PC-AP).
-
-MATÉRIA: ${assunto}
-TÓPICO: ${topico}
-BANCA: ${banca}
-QUANTIDADE: ${quantidade} questões
-
-TEXTO BASE (use SOMENTE este conteúdo para criar as questões):
----
-${textoBase}
----
-
-INSTRUÇÕES:
-1. Gere ${quantidade} questões no formato: ${estiloBanca}
-2. Distribua automaticamente entre os 3 níveis de dificuldade:
-   - FÁCIL: direta ao ponto, baseada literalmente no texto base, testa memorização
-   - MÉDIO: exige interpretação e aplicação do conteúdo
-   - DIFÍCIL: contextualizada, mistura dispositivos/conceitos do texto base, exige raciocínio
-3. Para o comentário de cada questão, siga EXATAMENTE este formato:
-
-📌 **A questão versa sobre [tema específico]**
-
-❌ **A** — *"trecho da alternativa"*
-INCORRETA. [Explicação do erro. Se houver artigo no texto base que contradiz, cite-o literalmente em itálico e negrito nos pontos-chave]
-
-✅ **B** — *"trecho da alternativa"*
-CORRETA. [Explicação do acerto com referência ao texto base]
-
-❌ **C** — *"trecho da alternativa"*
-INCORRETA. [Explicação...]
-
-❌ **D** — *"trecho da alternativa"*
-INCORRETA. [Explicação...]
-
-❌ **E** — *"trecho da alternativa"*
-INCORRETA. [Explicação...]
-
-💡 **Memorize:** **[FÓRMULA CURTA]** · complemento
-
-IMPORTANTE:
-- Cite artigos/dispositivos APENAS se estiverem explicitamente no texto base
-- Nunca invente números de artigos
-- O comentário deve ser rico, didático e referenciar o texto base sempre que possível
-
-Retorne APENAS um JSON válido sem markdown:
-{
-  "questoes": [
-    {
-      "enunciado": "...",
-      "opcoes": {"A": "...", "B": "...", "C": "...", "D": "...", "E": "..."},
-      "gabarito": "B",
-      "dificuldade": "Fácil|Médio|Difícil",
-      "comentario": "..."
-    }
-  ]
-}`;
-}
-
 // Chama Anthropic API
 async function chamarAnthropic(apiKey, prompt) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
-      messages: [{ role: 'user', content: prompt }],
-    }),
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 8000, messages: [{ role: 'user', content: prompt }] }),
   });
   const data = await response.json();
   if (data.error) throw new Error(data.error.message);
@@ -2129,20 +1925,70 @@ async function chamarAnthropic(apiKey, prompt) {
 
 // Chama Gemini API
 async function chamarGemini(apiKey, prompt) {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8000 },
-      }),
-    }
-  );
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8000 } }),
+  });
   const data = await response.json();
   if (data.error) throw new Error(data.error.message);
   return data.candidates[0].content.parts[0].text;
+}
+
+function buildPromptIA(assunto, topico, banca, quantidade, textoBase) {
+  const estilos = {
+    'CESPE': 'múltipla escolha com 5 alternativas (A a E), estilo CESPE: enunciados precisos, alternativas plausíveis com erros sutis',
+    'FCC': 'múltipla escolha com 5 alternativas (A a E), estilo FCC: linguagem próxima ao texto legal',
+    'VUNESP': 'múltipla escolha com 5 alternativas (A a E), estilo VUNESP: linguagem direta',
+    'AOCP': 'múltipla escolha com 5 alternativas (A a E), estilo AOCP: foco na letra da lei',
+    'IBFC': 'múltipla escolha com 5 alternativas (A a E), estilo IBFC: equilibrado',
+    'Inédita': 'múltipla escolha com 5 alternativas (A a E), estilo equilibrado e didático',
+  };
+  return `Você é professor especialista em concursos para a Polícia Civil do Amapá (PC-AP).
+
+MATÉRIA: ${assunto} | TÓPICO: ${topico} | BANCA: ${banca} | QUANTIDADE: ${quantidade}
+
+TEXTO BASE:
+---
+${textoBase}
+---
+
+INSTRUÇÕES:
+1. Gere ${quantidade} questões no formato: ${estilos[banca]||estilos['Inédita']}
+2. Distribua entre FÁCIL (literal), MÉDIO (interpretação) e DIFÍCIL (contextualizada)
+3. Comentário de cada questão EXATAMENTE neste formato:
+
+📌 **A questão versa sobre [tema]**
+
+❌ **A** — *"trecho"*
+INCORRETA. [Explicação. Se houver artigo no texto base que contradiz, cite-o em itálico e negrito]
+
+✅ **B** — *"trecho"*
+CORRETA. [Explicação com referência ao texto base]
+
+❌ **C** — *"trecho"*
+INCORRETA. [Explicação]
+
+❌ **D** — *"trecho"*
+INCORRETA. [Explicação]
+
+❌ **E** — *"trecho"*
+INCORRETA. [Explicação]
+
+💡 **Memorize:** **[FÓRMULA]** · complemento
+
+IMPORTANTE: Cite artigos APENAS se estiverem no texto base. Nunca invente números de artigos.
+
+Retorne APENAS JSON válido sem markdown:
+{"questoes":[{"enunciado":"...","opcoes":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"gabarito":"B","dificuldade":"Fácil|Médio|Difícil","comentario":"..."}]}`;
+}
+
+function atualizarTopicosIA() {
+  const assunto = document.getElementById('ai-assunto').value;
+  const el = document.getElementById('ai-topico');
+  if (!el) return;
+  const topicos = (db.topicos && db.topicos[assunto]) || [...new Set(db.questoes.filter(q=>q.assunto===assunto&&q.topico).map(q=>q.topico))].sort();
+  el.innerHTML = topicos.length ? topicos.map(t=>`<option value="${t}">${t}</option>`).join('') : '<option value="">— Sem tópicos —</option>';
 }
 
 async function gerarComIA() {
@@ -2155,58 +2001,27 @@ async function gerarComIA() {
   if (!textoBase) { toast('Cole um texto base para gerar as questões!', 'error'); return; }
   if (!assunto) { toast('Selecione uma matéria!', 'error'); return; }
 
-  // Detecta qual API usar: Gemini tem prioridade se configurada
   const geminiKey = db.settings.geminiKey;
   const anthropicKey = db.settings.apiKey;
-  const useGemini = !!geminiKey;
-  const usaAnthropic = !!anthropicKey;
-
-  if (!geminiKey && !anthropicKey) {
-    toast('Configure uma chave API nas Configurações → Integrações!', 'error');
-    openSettings();
-    showSettingsTab('integracoes');
-    return;
-  }
+  if (!geminiKey && !anthropicKey) { toast('Configure uma chave API nas Configurações → Integrações!', 'error'); openSettings(); return; }
 
   const btn = document.getElementById('btn-gerar-ia');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = useGemini ? '✨ Gerando com Gemini...' : '⚡ Gerando com Claude...';
-  }
+  if (btn) { btn.disabled = true; btn.textContent = geminiKey ? '✨ Gerando com Gemini...' : '⚡ Gerando com Claude...'; }
   document.getElementById('ai-loading').classList.add('show');
   document.getElementById('ai-resultados').innerHTML = '';
 
   const prompt = buildPromptIA(assunto, topico, banca, quantidade, textoBase);
-
   try {
-    let text;
-    if (useGemini) {
-      text = await chamarGemini(geminiKey, prompt);
-    } else {
-      text = await chamarAnthropic(anthropicKey, prompt);
-    }
-
+    const text = geminiKey ? await chamarGemini(geminiKey, prompt) : await chamarAnthropic(anthropicKey, prompt);
     const clean = text.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
-
     const geradas = parsed.questoes.map(q => ({
-      id: genId(),
-      enunciado: q.enunciado,
-      opcoes: q.opcoes,
-      gabarito: q.gabarito,
-      assunto,
-      topico: topico || textoBase.substring(0, 50),
-      dificuldade: q.dificuldade || 'Médio',
-      banca,
-      ano: new Date().getFullYear(),
-      comentario: q.comentario,
-      fonte: 'ia',
-      createdAt: Date.now(),
+      id: genId(), enunciado: q.enunciado, opcoes: q.opcoes, gabarito: q.gabarito,
+      assunto, topico: topico || '', dificuldade: q.dificuldade || 'Médio',
+      banca, ano: new Date().getFullYear(), comentario: q.comentario, fonte: 'ia', createdAt: Date.now(),
     }));
-
     window._aiQuestoes = geradas;
-    renderAIResultados(geradas, useGemini ? 'Gemini' : 'Claude');
-
+    renderAIResultados(geradas, geminiKey ? 'Gemini' : 'Claude');
   } catch(err) {
     toast('Erro ao gerar: ' + err.message, 'error');
   } finally {
@@ -2217,80 +2032,42 @@ async function gerarComIA() {
 
 function renderAIResultados(questoes, iaUsada) {
   const c = document.getElementById('ai-resultados');
-  const banca = document.getElementById('ai-banca')?.value || 'IA';
-  const assunto = document.getElementById('ai-assunto')?.value || '';
-  const topico = document.getElementById('ai-topico')?.value || '';
-
-  const iaBadge = iaUsada ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;background:${iaUsada==='Gemini'?'#E6F3FB':'#EEEDFE'};color:${iaUsada==='Gemini'?'#185FA5':'#534AB7'}">✨ ${iaUsada}</span>` : '';
-  c.innerHTML = `<div class="form-section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div>
-        <h3 style="font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px">${questoes.length} questão(ões) gerada(s) ${iaBadge}</h3>
-        <p style="font-size:12px;color:var(--text-muted)">${assunto}${topico ? ' · ' + topico : ''} · ${banca}</p>
-      </div>
-      <button class="btn btn-success" onclick="salvarTodasIA()">💾 Salvar Todas</button>
-    </div>
-    <div id="ai-questoes-lista"></div>
-  </div>`;
-
+  const iaBadge = iaUsada ? `<span style="font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;background:${iaUsada==='Gemini'?'#E6F1FB':'#EEEDFE'};color:${iaUsada==='Gemini'?'#185FA5':'#534AB7'}">✨ ${iaUsada}</span>` : '';
+  c.innerHTML = `<div class="form-section"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div><h3 style="font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin-bottom:2px">${questoes.length} questão(ões) gerada(s) ${iaBadge}</h3></div>
+    <button class="btn btn-success" onclick="salvarTodasIA()">💾 Salvar Todas</button>
+  </div><div id="ai-questoes-lista"></div></div>`;
   const lista = document.getElementById('ai-questoes-lista');
+
   questoes.forEach((q, i) => {
-    const difTag = q.dificuldade === 'Fácil' ? 'tag-green' : q.dificuldade === 'Difícil' ? 'tag-red' : 'tag-amber';
     const div = document.createElement('div');
-    div.id = 'ai-q-' + i;
-    div.style.cssText = 'border:1.5px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px;background:var(--card)';
-    div.innerHTML = `
-      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-        <span class="tag tag-blue">${(q.assunto||assunto).split('(')[0].trim()}</span>
-        ${topico ? `<span class="tag tag-gray">${topico}</span>` : ''}
-        <span class="tag ${difTag}">${q.dificuldade || 'Médio'}</span>
-        <span class="tag tag-gray">${banca}</span>
-        <span id="ai-saved-${i}" style="display:none;font-size:11px;background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:6px;font-weight:600">✓ Salva</span>
+    div.className = 'form-section';
+    div.style.marginBottom = '12px';
+    const difTag = q.dificuldade === 'Fácil' ? 'tag-green' : q.dificuldade === 'Difícil' ? 'tag-red' : 'tag-amber';
+
+    div.innerHTML = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div style="flex:1">
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+          <span class="tag tag-blue">${q.assunto.split('(')[0].trim()}</span>
+          <span class="tag ${difTag}">${q.dificuldade}</span>
+          <span class="tag tag-blue">🤖 IA</span>
+        </div>
+        <p style="font-size:14px;line-height:1.65;color:var(--text)"><strong>Q${i+1}.</strong> ${q.enunciado}</p>
       </div>
-      <p style="font-size:13.5px;font-weight:600;margin-bottom:12px;line-height:1.5">${q.enunciado}</p>
-      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
-        ${['A','B','C','D','E'].filter(l => q.opcoes[l]).map(l => `
-          <div style="display:flex;gap:10px;padding:8px 12px;border-radius:8px;background:${l===q.gabarito?'var(--green-light)':'var(--bg)'};border:1px solid ${l===q.gabarito?'var(--green)':'transparent'}">
-            <span style="font-weight:700;font-size:13px;color:${l===q.gabarito?'var(--green)':'var(--text-mid)'};min-width:18px">${l}</span>
-            <span style="font-size:13px">${q.opcoes[l]}</span>
-          </div>`).join('')}
-      </div>
-      ${q.comentario ? `
-        <div style="background:var(--blue-light);border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--text);line-height:1.6">
-          ${renderMd(q.comentario)}
-        </div>` : ''}
-      <div style="display:flex;gap:8px;justify-content:flex-end" id="ai-btns-${i}">
-        <button class="btn btn-ghost btn-sm" onclick="descartarQuestaoIA(${i})">Descartar</button>
-        <button class="btn btn-primary btn-sm" onclick="salvarUmaIA(${i})">💾 Salvar questão</button>
-      </div>`;
-    lista.appendChild(div);
+      <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="salvarUmaIA(${i})">💾 Salvar</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${['A','B','C','D','E'].filter(l => q.opcoes[l]).map(l => { const t = q.opcoes[l]; return `
+        <div style="display:flex;gap:10px;padding:9px 13px;border-radius:8px;${l===q.gabarito?'background:var(--green-light);border:1.5px solid var(--green)':'background:var(--bg);'}">
+          <span style="font-family:'Sora',sans-serif;font-size:12.5px;font-weight:700;color:${l===q.gabarito?'var(--green)':'var(--text-mid)'};min-width:18px">${l}</span>
+          <span style="font-size:13px;color:var(--text)">${t}</span>
+        </div>`; }).join('')}
+    </div>
+    ${q.comentario ? `<div style="margin-top:10px;padding:10px 14px;background:var(--blue-light);border-radius:8px;font-size:12.5px;color:var(--blue)">💡 <strong>Gabarito ${q.gabarito}:</strong> ${q.comentario}</div>` : ''}`;
+
+    c.appendChild(div);
   });
 }
-
-function descartarQuestaoIA(i) {
-  const el = document.getElementById('ai-q-' + i);
-  if (el) { el.style.opacity = '0.3'; el.style.pointerEvents = 'none'; }
-  const btns = document.getElementById('ai-btns-' + i);
-  if (btns) btns.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Descartada</span>';
-  window._aiQuestoes[i]._descartada = true;
-}
-
-async function salvarUmaIA(i) {
-  const q = window._aiQuestoes[i];
-  if (!q || q._salva) return;
-  const ok = await salvarQuestaoFirestore(q);
-  if (ok) {
-    q._salva = true;
-    const badge = document.getElementById('ai-saved-' + i);
-    if (badge) badge.style.display = 'inline';
-    const btns = document.getElementById('ai-btns-' + i);
-    if (btns) btns.innerHTML = '<span style="font-size:12px;color:var(--green)">✓ Salva no banco</span>';
-    toast('Questão salva!');
-    await garantirTopico(q.assunto, q.topico);
-  }
-}
-
-
 
 async function salvarTodasIA() {
   const questoes = window._aiQuestoes || [];
@@ -2302,287 +2079,546 @@ async function salvarTodasIA() {
     if (q._salva || q._descartada) continue;
     const ok = await salvarQuestaoFirestore(q);
     if (ok) {
-      q._salva = true;
-      saved++;
+      q._salva = true; saved++;
       const badge = document.getElementById('ai-saved-' + i);
       if (badge) badge.style.display = 'inline';
       const btns = document.getElementById('ai-btns-' + i);
-      if (btns) btns.innerHTML = '<span style="font-size:12px;color:var(--green)">✓ Salva no banco</span>';
-      await garantirTopico(q.assunto, q.topico);
+      if (btns) btns.innerHTML = '<span style="font-size:12px;color:var(--green)">✓ Salva</span>';
     }
   }
   toast(`${saved} questão(ões) salva(s)!`);
 }
 
-function mostrarBloqueio(user) {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = 'none';
-  document.getElementById('bloqueio-screen').style.display = 'flex';
-  document.getElementById('bloqueio-email').textContent = user.email;
+function descartarQuestaoIA(i) {
+  const el = document.getElementById('ai-q-' + i);
+  if (el) { el.style.opacity = '0.3'; el.style.pointerEvents = 'none'; }
+  const btns = document.getElementById('ai-btns-' + i);
+  if (btns) btns.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Descartada</span>';
+  if (window._aiQuestoes[i]) window._aiQuestoes[i]._descartada = true;
+}
+async function salvarUmaIA(i) {
+  const q = window._aiQuestoes?.[i];
+  if (!q || q._salva) return;
+  const ok = await salvarQuestaoFirestore(q);
+  if (ok) {
+    q._salva = true;
+    const badge = document.getElementById('ai-saved-' + i);
+    if (badge) badge.style.display = 'inline';
+    const btns = document.getElementById('ai-btns-' + i);
+    if (btns) btns.innerHTML = '<span style="font-size:12px;color:var(--green)">✓ Salva</span>';
+    toast('Questão salva!');
+  }
+}
+// =============================================
+// INÍCIO
+// =============================================
+function renderInicio() {
+  const total = db.questoes.length;
+  const respondidas = [...new Set(db.respostas.map(r => r.questionId))].length;
+  const acertos = db.respostas.filter(r => r.correta).length;
+  const erradas = db.respostas.filter(r => !r.correta).length;
+  const taxa = db.respostas.length ? Math.round((acertos/db.respostas.length)*100)+'%' : '—';
+
+  document.getElementById('inicio-total').textContent = total;
+  document.getElementById('inicio-respondidas').textContent = respondidas;
+  document.getElementById('inicio-taxa').textContent = taxa;
+  document.getElementById('inicio-erradas').textContent = erradas;
+
+  // Progresso por assunto
+  const el = document.getElementById('progresso-assuntos');
+  const rows = ASSUNTOS.map(a => {
+    const qs = db.questoes.filter(q => q.assunto === a);
+    if (!qs.length) return null;
+    const rs = db.respostas.filter(r => qs.find(q => q.id === r.questionId));
+    const acc = rs.filter(r => r.correta).length;
+    const pct = rs.length ? Math.round((acc/rs.length)*100) : 0;
+    const color = pct>=70?'var(--green)':pct>=50?'var(--blue)':'var(--amber)';
+    return `<div style="margin-bottom:13px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:600">${a.split('(')[0].trim()}</span>
+        <span style="font-size:12px;color:var(--text-muted)">${qs.length} questões${rs.length?` · ${pct}% acerto`:''}</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).filter(Boolean);
+
+  el.innerHTML = rows.length ? rows.join('') : '<p style="color:var(--text-muted);font-size:13px">Nenhuma questão ainda. Cadastre ou gere questões com IA!</p>';
+
+  // Últimas respostas
+  const uel = document.getElementById('ultimas-respondidas');
+  const ultimas = db.respostas.slice(-5).reverse();
+  if (!ultimas.length) {
+    uel.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhuma atividade ainda.</p>';
+  } else {
+    uel.innerHTML = ultimas.map(r => {
+      const q = db.questoes.find(q => q.id === r.questionId);
+      if (!q) return '';
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:18px">${r.correta?'✅':'❌'}</span>
+        <div style="flex:1;min-width:0">
+          <p style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.enunciado}</p>
+          <p style="font-size:11.5px;color:var(--text-muted)">${q.assunto.split('(')[0].trim()} · ${r.tempo}s</p>
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 
 // =============================================
-// AUTH FUNCTIONS (globais)
+// STATS
 // =============================================
-window.fazerLogin = async function() {
-  const email = document.getElementById('login-email').value.trim();
-  const senha = document.getElementById('login-senha').value;
-  const btn = document.getElementById('btn-login');
-  if (!email || !senha) { authToast('Preencha e-mail e senha!', 'error'); return; }
-  btn.disabled = true; btn.textContent = 'Entrando...';
-  try {
-    await signInWithEmailAndPassword(auth, email, senha);
-  } catch(e) {
-    authToast('E-mail ou senha incorretos!', 'error');
-    btn.disabled = false; btn.textContent = 'Entrar';
-  }
-};
+function renderStats() {
+  const total = db.questoes.length;
+  const acertos = db.respostas.filter(r => r.correta).length;
+  const erros = db.respostas.filter(r => !r.correta).length;
+  const taxa = db.respostas.length ? Math.round((acertos/db.respostas.length)*100) : 0;
+  const tempoMed = db.respostas.length ? Math.round(db.respostas.reduce((s,r)=>s+r.tempo,0)/db.respostas.length) : 0;
+  const respondidas = [...new Set(db.respostas.map(r=>r.questionId))].length;
 
-window.fazerCadastro = async function() {
-  const email = document.getElementById('cad-email').value.trim();
-  const senha = document.getElementById('cad-senha').value;
-  const codigo = document.getElementById('cad-codigo').value.trim().toUpperCase();
-  const nome = document.getElementById('cad-nome').value.trim();
-  const btn = document.getElementById('btn-cadastrar');
-  if (!email || !senha || !codigo || !nome) { authToast('Preencha todos os campos!', 'error'); return; }
-  if (senha.length < 6) { authToast('Senha deve ter no mínimo 6 caracteres!', 'error'); return; }
-  btn.disabled = true; btn.textContent = 'Verificando código...';
-  try {
-    // Verifica código de acesso
-    const codigoSnap = await getDoc(doc(db_fire, 'codigos', codigo));
-    if (!codigoSnap.exists()) { authToast('Código de acesso inválido!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
-    const codigoData = codigoSnap.data();
-    if (codigoData.usado) { authToast('Este código já foi utilizado!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
-    const validade = codigoData.validade?.toDate ? codigoData.validade.toDate() : new Date(codigoData.validade);
-    if (validade < new Date()) { authToast('Código de acesso vencido!', 'error'); btn.disabled=false; btn.textContent='Criar Conta'; return; }
-    // Cria usuário no Auth
-    btn.textContent = 'Criando conta...';
-    let cred;
-    try {
-      cred = await createUserWithEmailAndPassword(auth, email, senha);
-    } catch(e) {
-      if (e.code === 'auth/email-already-in-use') authToast('E-mail já cadastrado!', 'error');
-      else authToast('Erro ao criar conta: ' + e.message, 'error');
-      btn.disabled=false; btn.textContent='Criar Conta';
-      return;
-    }
-    // Salva no Firestore — com rollback se falhar
-    try {
-      await setDoc(doc(db_fire, 'usuarios', cred.user.uid), {
-        nome, email, ativo: true,
-        validade: codigoData.validade,
-        plano: codigoData.plano || 'mensal',
-        codigoUsado: codigo,
-        criadoEm: serverTimestamp(),
-        dispositivos: []
-      });
-      // Marca código como usado
-      await updateDoc(doc(db_fire, 'codigos', codigo), { usado: true, usadoPor: email, usadoEm: serverTimestamp() });
-    } catch(e) {
-      // ⚠️ ROLLBACK: remove do Auth para não ficar usuário fantasma
-      await cred.user.delete();
-      authToast('Erro ao salvar dados. Tente novamente.', 'error');
-      btn.disabled=false; btn.textContent='Criar Conta';
-    }
-  } catch(e) {
-    authToast('Erro inesperado: ' + e.message, 'error');
-    btn.disabled=false; btn.textContent='Criar Conta';
-  }
-};
+  document.getElementById('stats-grid').innerHTML = [
+    ['📚','#eff6ff',total,'Total no Banco'],
+    ['✅','#ecfdf5',acertos,'Total de Acertos'],
+    ['❌','#fef2f2',erros,'Total de Erros'],
+    ['🎯','#fffbeb',taxa+'%','Taxa de Acerto'],
+    ['⏱','#f5f3ff',tempoMed+'s','Tempo Médio/Questão'],
+    ['📝','#eff6ff',respondidas,'Questões Respondidas'],
+  ].map(([ic,bg,val,lbl]) => `<div class="stat-card">
+    <div class="stat-icon" style="background:${bg}">${ic}</div>
+    <div class="stat-info"><h3>${val}</h3><p>${lbl}</p></div>
+  </div>`).join('');
 
-window.fazerLogout = async function() {
-  if (confirm('Deseja sair da sua conta?')) {
-    await signOut(auth);
-    window._currentUser = null;
-    window._userData = null;
-  }
-};
-
-window.authToast = function(msg, tipo='success') {
-  const el = document.getElementById('auth-toast');
-  el.textContent = msg;
-  el.className = 'auth-toast show ' + tipo;
-  setTimeout(() => el.classList.remove('show'), 3500);
-};
-
-window.showAuthTab = function(tab) {
-  document.getElementById('auth-login').style.display = tab==='login' ? 'block' : 'none';
-  document.getElementById('auth-cadastro').style.display = tab==='cadastro' ? 'block' : 'none';
-  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.auth-tab').forEach(t => { if(t.dataset.tab===tab) t.classList.add('active'); });
-};
-
-// =============================================
-// ADMIN FUNCTIONS (globais)
-// =============================================
-window._todosAlunos = [];
-
-window.carregarAdmin = async function() {
-  const lista = document.getElementById('admin-usuarios-list');
-  lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Carregando...</p>';
-  const snap = await getDocs(collection(db_fire, 'usuarios'));
-  if (snap.empty) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum usuário.</p>'; return; }
-
-  const agora = new Date();
-  const em7dias = new Date(agora.getTime() + 7*24*60*60*1000);
-
-  window._todosAlunos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-  // Atualiza stats
-  const ativos = window._todosAlunos.filter(u => {
-    const val = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade);
-    return u.ativo && val > agora;
-  }).length;
-  const vencendo = window._todosAlunos.filter(u => {
-    const val = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade);
-    return u.ativo && val > agora && val <= em7dias;
-  }).length;
-
-  const el1 = document.getElementById('admin-stat-ativos');
-  const el2 = document.getElementById('admin-stat-vencendo');
-  if (el1) el1.textContent = ativos;
-  if (el2) el2.textContent = vencendo;
-
-  renderAlunos(window._todosAlunos);
-};
-
-window.filtrarAlunos = function(busca) {
-  const termo = busca.toLowerCase();
-  const filtrados = (window._todosAlunos || []).filter(u =>
-    (u.nome||'').toLowerCase().includes(termo) ||
-    (u.email||'').toLowerCase().includes(termo)
-  );
-  renderAlunos(filtrados);
-};
-
-window.renderAlunos = function(alunos) {
-  const lista = document.getElementById('admin-usuarios-list');
-  if (!alunos.length) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum aluno encontrado.</p>'; return; }
-  const agora = new Date();
-  const em7dias = new Date(agora.getTime() + 7*24*60*60*1000);
-
-  lista.innerHTML = alunos.map(u => {
-    const val = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade);
-    const vencido = val < agora;
-    const vencendoBreve = !vencido && val <= em7dias;
-    const diasRestantes = Math.ceil((val - agora) / (1000*60*60*24));
-
-    let statusColor = vencido ? 'var(--red)' : vencendoBreve ? 'var(--amber)' : 'var(--green)';
-    let statusText = vencido ? 'Vencido' : vencendoBreve ? `Vence em ${diasRestantes} dias` : `Ativo · vence ${val.toLocaleDateString('pt-BR')}`;
-    let statusEmoji = vencido ? '❌' : vencendoBreve ? '⚠️' : '✅';
-    let badgeHtml = vencendoBreve ? `<span style="font-size:10px;background:var(--amber-light);color:var(--amber);padding:2px 7px;border-radius:6px;font-weight:700;margin-left:6px">Vence em breve</span>` : '';
-
-    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <p style="font-size:13.5px;font-weight:600">${u.nome || '—'}${badgeHtml}</p>
-        <p style="font-size:12px;color:var(--text-muted)">${u.email}</p>
-        <p style="font-size:11.5px;color:${statusColor}">${statusEmoji} ${statusText}</p>
+  const el = document.getElementById('stats-assuntos');
+  const rows = ASSUNTOS.map(a => {
+    const qs = db.questoes.filter(q => q.assunto === a);
+    if (!qs.length) return null;
+    const rs = db.respostas.filter(r => qs.find(q => q.id === r.questionId));
+    const acc = rs.filter(r => r.correta).length;
+    const pct = rs.length ? Math.round((acc/rs.length)*100) : 0;
+    const color = pct>=70?'var(--green)':pct>=50?'var(--blue)':pct>0?'var(--amber)':'var(--text-muted)';
+    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <p style="font-size:13.5px;font-weight:600">${a}</p>
+        <p style="font-size:12px;color:var(--text-muted)">${qs.length} questão(ões) · ${rs.length} respondida(s)</p>
       </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-success btn-sm" onclick="ativarUsuario('${u.id}', 30)">+30 dias</button>
-        <button class="btn btn-outline btn-sm" onclick="ativarUsuario('${u.id}', 365)">+1 ano</button>
-        <button class="btn btn-danger btn-sm" onclick="desativarUsuario('${u.id}')">Bloquear</button>
+      <div style="text-align:right;min-width:60px">
+        <p style="font-family:'Sora',sans-serif;font-size:20px;font-weight:700;color:${color}">${rs.length?pct+'%':'—'}</p>
       </div>
     </div>`;
-  }).join('');
-};
+  }).filter(Boolean);
 
-window.ativarUsuario = async function(uid, dias) {
-  const novaVal = new Date();
-  novaVal.setDate(novaVal.getDate() + dias);
-  await updateDoc(doc(db_fire, 'usuarios', uid), { ativo: true, validade: novaVal });
-  toast(`Acesso liberado por ${dias} dias!`);
-  carregarAdmin();
-};
+  el.innerHTML = rows.length ? rows.join('') : '<p style="color:var(--text-muted);font-size:13px">Nenhuma questão no banco ainda.</p>';
+}
 
-window.desativarUsuario = async function(uid) {
-  if (!confirm('Bloquear acesso deste usuário?')) return;
-  await updateDoc(doc(db_fire, 'usuarios', uid), { ativo: false });
-  toast('Usuário bloqueado!', 'info');
-  carregarAdmin();
-};
-
-window.gerarCodigo = async function() {
-  const dias = parseInt(document.getElementById('codigo-dias').value || '30');
-  const plano = document.getElementById('codigo-plano').value || 'mensal';
-  const qtd = parseInt(document.getElementById('codigo-qtd').value || '1');
-  const expiraDias = parseInt(document.getElementById('codigo-expira').value || '0');
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-  const codigos = [];
-  for (let n = 0; n < qtd; n++) {
-    let codigo = '';
-    for (let i=0; i<8; i++) { if(i===4) codigo+='-'; codigo += chars[Math.floor(Math.random()*chars.length)]; }
-    const validade = new Date();
-    validade.setDate(validade.getDate() + dias);
-    const dadosCodigo = { usado: false, validade, plano, criadoEm: serverTimestamp(), diasAcesso: dias };
-    if (expiraDias > 0) {
-      const expira = new Date();
-      expira.setDate(expira.getDate() + expiraDias);
-      dadosCodigo.expiraCodigo = expira;
-    }
-    await setDoc(doc(db_fire, 'codigos', codigo), dadosCodigo);
-    codigos.push(codigo);
+// =============================================
+// REVISÃO
+// =============================================
+function renderRevisao() {
+  const erradas = db.questoes.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
+  const el = document.getElementById('revisao-list');
+  if (!erradas.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🎉</div>
+      <h3>Nenhuma questão para revisar!</h3>
+      <p>Você acertou tudo ou ainda não respondeu questões.</p>
+    </div>`;
+    return;
   }
-
-  const lista = document.getElementById('codigos-gerados-list');
-  lista.innerHTML = codigos.map(c => `
-    <div style="display:flex;align-items:center;gap:12px;background:var(--blue-light);border-radius:10px;padding:12px 16px">
-      <code style="font-size:20px;font-weight:800;letter-spacing:3px;color:var(--blue);flex:1">${c}</code>
-      <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText('${c}');toast('Copiado!')">📋 Copiar</button>
-    </div>`).join('');
-  document.getElementById('codigo-result').style.display = 'block';
-  toast(`${qtd} código(s) gerado(s)!`);
-  carregarCodigos();
-};
-
-window.copiarCodigo = function() {
-  navigator.clipboard.writeText(document.getElementById('codigo-gerado').textContent);
-  toast('Código copiado!');
-};
-
-window.carregarCodigos = async function() {
-  const lista = document.getElementById('admin-codigos-list');
-  lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Carregando...</p>';
-  const snap = await getDocs(collection(db_fire, 'codigos'));
-  if (snap.empty) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum código.</p>'; return; }
-
-  const agora = new Date();
-  const docs = snap.docs;
-  const disponiveis = docs.filter(d => !d.data().usado).length;
-  const usados = docs.filter(d => d.data().usado).length;
-
-  // Atualiza stats
-  const elDisp = document.getElementById('admin-stat-codigos-disp');
-  const elUsados = document.getElementById('admin-stat-codigos-usados');
-  if (elDisp) elDisp.textContent = disponiveis;
-  if (elUsados) elUsados.textContent = usados;
-
-  lista.innerHTML = docs.map(d => {
-    const c = d.data();
-    const val = c.validade?.toDate ? c.validade.toDate() : new Date(c.validade);
-    const expira = c.expiraCodigo?.toDate ? c.expiraCodigo.toDate() : c.expiraCodigo ? new Date(c.expiraCodigo) : null;
-    const codigoExpirado = expira && expira < agora && !c.usado;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <code style="font-size:15px;font-weight:700;letter-spacing:2px;color:${codigoExpirado?'var(--text-muted)':'var(--blue)'};flex:1;${codigoExpirado?'text-decoration:line-through':''}">${d.id}</code>
-      <span class="tag ${c.usado?'tag-red':codigoExpirado?'tag-gray':'tag-green'}">
-        ${c.usado ? '✗ Usado por '+c.usadoPor : codigoExpirado ? 'Expirado' : '✓ Disponível'}
-      </span>
-      <span class="tag tag-gray">${c.diasAcesso} dias · acesso até ${val.toLocaleDateString('pt-BR')}</span>
-      ${expira && !c.usado ? `<span class="tag tag-amber">Código expira ${expira.toLocaleDateString('pt-BR')}</span>` : ''}
-      ${!c.usado ? `<button class="btn btn-danger btn-sm" onclick="deletarCodigo('${d.id}')">🗑</button>` : ''}
+  el.innerHTML = erradas.map((q,i) => {
+    const r = getUltimaResposta(q.id);
+    return `<div class="question-item" onclick="abrirQuestaoSozinha('${q.id}')">
+      <span class="q-number">#${i+1}</span>
+      <div class="q-content">
+        <p class="q-enunciado">${q.enunciado}</p>
+        <div class="q-tags">
+          <span class="tag tag-blue">${q.assunto.split('(')[0].trim()}</span>
+          <span class="tag tag-red">✗ Respondeu ${r.resposta} · Gabarito ${q.gabarito}</span>
+        </div>
+      </div>
+      <div class="q-status errada"></div>
     </div>`;
   }).join('');
-};
+}
 
-window.deletarCodigo = async function(codigo) {
-  if (!confirm('Apagar código '+codigo+'?')) return;
-  await deleteDoc(doc(db_fire, 'codigos', codigo));
-  toast('Código apagado!', 'info');
-  carregarCodigos();
-};
+function startRevisaoQuiz() {
+  const erradas = db.questoes.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
+  if (!erradas.length) { toast('Nenhuma questão errada!', 'info'); return; }
+  showTab('quiz');
+  iniciarSessao(erradas.sort(() => Math.random() - 0.5));
+}
 
+// =============================================
+// IMPORTAR JSON
+// =============================================
+function lerArquivoJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('import-json').value = e.target.result;
+    toast('Arquivo carregado! Clique em Validar.', 'info');
+  };
+  reader.readAsText(file);
+}
+
+function validarImport() {
+  const raw = document.getElementById('import-json').value.trim();
+  if (!raw) { toast('Cole ou carregue um JSON primeiro!', 'error'); return; }
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch(e) {
+    toast('JSON inválido: ' + e.message, 'error');
+    return;
+  }
+
+  if (!Array.isArray(data)) { toast('O JSON deve ser um array de questões!', 'error'); return; }
+
+  const validas = [], erros = [];
+
+  data.forEach((q, i) => {
+    const problemas = [];
+    if (!q.enunciado) problemas.push('sem enunciado');
+    if (!q.opcoes || typeof q.opcoes !== 'object') problemas.push('sem opcoes');
+    if (!q.gabarito) problemas.push('sem gabarito');
+    else if (!['A','B','C','D','E'].includes(q.gabarito.toUpperCase())) problemas.push('gabarito inválido');
+
+    if (problemas.length) {
+      erros.push({ index: i+1, problemas });
+    } else {
+      const jaExiste = db.questoes.some(e => e.enunciado.trim() === q.enunciado.trim());
+      validas.push({ ...q, gabarito: q.gabarito.toUpperCase(), jaExiste });
+    }
+  });
+
+  renderImportPreview(validas, erros);
+}
+
+function renderImportPreview(validas, erros) {
+  const novas = validas.filter(q => !q.jaExiste);
+  const duplicadas = validas.filter(q => q.jaExiste);
+  const el = document.getElementById('import-preview');
+
+  let html = `<div class="form-section">
+    <h3>Resultado da Validação</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+      <span class="tag tag-green" style="font-size:13px;padding:6px 12px">✅ ${novas.length} novas</span>
+      ${duplicadas.length ? `<span class="tag tag-amber" style="font-size:13px;padding:6px 12px">⚠️ ${duplicadas.length} duplicadas (já existem)</span>` : ''}
+      ${erros.length ? `<span class="tag tag-red" style="font-size:13px;padding:6px 12px">❌ ${erros.length} com erro</span>` : ''}
+    </div>`;
+
+  if (erros.length) {
+    html += `<div style="background:var(--red-light);border-radius:8px;padding:12px 14px;margin-bottom:14px">
+      <p style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:6px">Questões com problema:</p>
+      ${erros.map(e => `<p style="font-size:12.5px;color:var(--red)">• Questão #${e.index}: ${e.problemas.join(', ')}</p>`).join('')}
+    </div>`;
+  }
+
+  if (novas.length) {
+    html += `<div style="margin-bottom:14px;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:8px">
+      ${novas.map((q,i) => {
+        const mat = q.materia || q.assunto || '—';
+        const dif = q.dificuldade || 'Médio';
+        const difTag = dif==='Fácil'?'tag-green':dif==='Difícil'?'tag-red':'tag-amber';
+        return `<div style="padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg)">
+          <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+            <span class="tag tag-blue">${mat}</span>
+            <span class="tag ${difTag}">${dif}</span>
+            <span class="tag tag-green">Gabarito: ${q.gabarito}</span>
+          </div>
+          <p style="font-size:13px;color:var(--text)">${q.enunciado.slice(0,120)}${q.enunciado.length>120?'…':''}</p>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-success btn-lg" onclick="confirmarImport()">💾 Importar ${novas.length} questão(ões)</button>`;
+  } else if (!erros.length) {
+    html += `<p style="color:var(--text-muted);font-size:13.5px">Todas as questões já existem no banco.</p>`;
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+  window._importNovas = novas;
+}
+
+async function confirmarImport() {
+  const novas = (window._importNovas || []).filter(q => !q.jaExiste);
+  if (!novas.length) { toast('Nenhuma questão nova para importar!', 'info'); return; }
+
+  let saved = 0;
+  for (const q of novas) {
+    const obj = {
+      id: genId(),
+      enunciado: q.enunciado,
+      opcoes: q.opcoes,
+      gabarito: q.gabarito,
+      assunto: q.materia || q.assunto || ASSUNTOS[0],
+      topico: q.topico || '',
+      banca: q.banca || '',
+      ano: q.ano || null,
+      dificuldade: q.dificuldade || 'Médio',
+      comentario: q.comentario || '',
+      fonte: 'importado',
+      createdAt: Date.now(),
+    };
+    await salvarQuestaoFirestore(obj);
+    saved++;
+  }
+
+  toast(`${saved} questão(ões) importada(s) com sucesso!`);
+  document.getElementById('import-json').value = '';
+  document.getElementById('import-preview').innerHTML = '';
+  window._importNovas = [];
+}
+
+function abrirEditarComentario() {
+  document.getElementById('edit-comentario-text').value = window._editComentario || '';
+  document.getElementById('modal-editar-comentario').classList.add('show');
+}
+
+async function salvarComentarioEditado() {
+  const texto = document.getElementById('edit-comentario-text').value.trim();
+  await atualizarComentarioFirestore(window._editQid, texto);
+  document.getElementById('feedback-text').textContent = texto || 'Fundamentação atualizada!';
+  document.getElementById('modal-editar-comentario').classList.remove('show');
+  window._editComentario = texto;
+  toast('Fundamentação atualizada!');
+}
+
+document.getElementById('modal-editar-comentario')?.addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
+
+// =============================================
+// EDITAR / EXCLUIR QUESTÃO (admin)
+// =============================================
+let editGabaritoAtual = null;
+
+function abrirEditarQuestao(id) {
+  const q = db.questoes.find(q => q.id === id);
+  if (!q) return;
+  document.getElementById('edit-q-id').value = q.id;
+  document.getElementById('edit-q-enunciado').value = q.enunciado;
+  document.getElementById('edit-q-topico').value = q.topico || '';
+  document.getElementById('edit-q-banca').value = q.banca || '';
+  document.getElementById('edit-q-ano').value = q.ano || '';
+  document.getElementById('edit-q-comentario').value = q.comentario || '';
+  document.getElementById('edit-q-dificuldade').value = q.dificuldade || 'Médio';
+  const sel = document.getElementById('edit-q-assunto');
+  sel.innerHTML = ASSUNTOS.map(a => `<option value="${a}" ${a===q.assunto?'selected':''}>${a}</option>`).join('');
+  document.getElementById('edit-opcoes-form').innerHTML = ['A','B','C','D','E'].map(l =>
+    `<div class="option-row">
+      <div class="option-label">${l}</div>
+      <input class="form-input" style="flex:1" id="edit-opcao-${l}" value="${(q.opcoes[l]||'').replace(/"/g,'&quot;')}">
+    </div>`
+  ).join('');
+  editGabaritoAtual = q.gabarito;
+  document.querySelectorAll('#edit-gabarito-options .gabarito-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === q.gabarito);
+  });
+  document.getElementById('modal-editar-questao').classList.add('show');
+}
+
+function fecharEditarQuestao() {
+  document.getElementById('modal-editar-questao').classList.remove('show');
+}
+
+function setEditGabarito(l) {
+  editGabaritoAtual = l;
+  document.querySelectorAll('#edit-gabarito-options .gabarito-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === l);
+  });
+}
+
+async function salvarEdicaoQuestao() {
+  const id = document.getElementById('edit-q-id').value;
+  const enunciado = document.getElementById('edit-q-enunciado').value.trim();
+  if (!enunciado) { toast('Preencha o enunciado!', 'error'); return; }
+  if (!editGabaritoAtual) { toast('Selecione o gabarito!', 'error'); return; }
+  const opcoes = {};
+  for (const l of ['A','B','C','D','E']) {
+    opcoes[l] = document.getElementById('edit-opcao-'+l).value.trim();
+  }
+  const { db_fire, doc, updateDoc } = window._fire;
+  const updates = {
+    enunciado, opcoes, gabarito: editGabaritoAtual,
+    assunto: document.getElementById('edit-q-assunto').value,
+    topico: document.getElementById('edit-q-topico').value.trim(),
+    banca: document.getElementById('edit-q-banca').value.trim(),
+    ano: document.getElementById('edit-q-ano').value ? parseInt(document.getElementById('edit-q-ano').value) : null,
+    dificuldade: document.getElementById('edit-q-dificuldade').value,
+    comentario: document.getElementById('edit-q-comentario').value.trim(),
+  };
+  await updateDoc(doc(db_fire, 'questoes', id), updates);
+  const idx = db.questoes.findIndex(q => q.id === id);
+  if (idx !== -1) db.questoes[idx] = { ...db.questoes[idx], ...updates };
+  fecharEditarQuestao();
+  renderBanco();
+  toast('Questão atualizada!');
+}
+
+async function apagarPorFonte() {
+  const fonte = document.getElementById('delete-fonte-select').value;
+  const alvo = db.questoes.filter(q => q.fonte === fonte);
+  if (!alvo.length) { toast('Nenhuma questão com essa fonte!', 'info'); return; }
+  if (!confirm(`Apagar ${alvo.length} questão(ões) com fonte "${fonte}"? Ação irreversível!`)) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  let count = 0;
+  for (const q of alvo) {
+    await deleteDoc(doc(db_fire, 'questoes', q.id));
+    count++;
+  }
+  db.questoes = db.questoes.filter(q => q.fonte !== fonte);
+  updateBadge();
+  renderBanco();
+  toast(`${count} questão(ões) apagada(s)!`, 'info');
+}
+
+async function apagarTodasQuestoes() {
+  if (!confirm(`Apagar TODAS as ${db.questoes.length} questões do banco? Ação IRREVERSÍVEL!`)) return;
+  if (!confirm('Tem certeza absoluta? Isso não pode ser desfeito!')) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  let count = 0;
+  for (const q of db.questoes) {
+    await deleteDoc(doc(db_fire, 'questoes', q.id));
+    count++;
+  }
+  db.questoes = [];
+  updateBadge();
+  renderBanco();
+  toast(`${count} questão(ões) apagada(s)!`, 'info');
+}
+
+async function excluirQuestao(id) {
+  if (!confirm('Excluir esta questão permanentemente?')) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  await deleteDoc(doc(db_fire, 'questoes', id));
+  db.questoes = db.questoes.filter(q => q.id !== id);
+  updateBadge();
+  renderBanco();
+  toast('Questão excluída!', 'info');
+}
+
+document.getElementById('modal-editar-questao').addEventListener('click', function(e) {
+  if (e.target === this) fecharEditarQuestao();
+});
+
+// =============================================
+// SETTINGS
+// =============================================
+function openSettings() {
+  document.getElementById('modal-settings').classList.add('show');
+  showSettingsTab('materias');
+  if (db.settings.apiKey) document.getElementById('settings-api-key').value = db.settings.apiKey;
+  if (db.settings.geminiKey) document.getElementById('settings-gemini-key').value = db.settings.geminiKey;
+  updateSettingsStats();
+  renderMateriasList();
+  updateAPIStatus();
+}
+
+function showSettingsTab(tab) {
+  ['materias','integracoes','dados'].forEach(t => {
+    const btn = document.getElementById('stab-' + t);
+    const el = document.getElementById('stab-content-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'materias') { updateSettingsStats(); renderMateriasList(); }
+}
+
+function updateSettingsStats() {
+  const topicosUnicos = new Set(db.questoes.map(q => q.topico).filter(Boolean)).size;
+  const el1 = document.getElementById('stat-materias-count');
+  const el2 = document.getElementById('stat-questoes-count');
+  const el3 = document.getElementById('stat-topicos-count');
+  if (el1) el1.textContent = ASSUNTOS.length;
+  if (el2) el2.textContent = db.questoes.length;
+  if (el3) el3.textContent = topicosUnicos;
+}
+
+function updateAPIStatus() {
+  const antEl = document.getElementById('anthropic-status');
+  const gemEl = document.getElementById('gemini-status');
+  if (antEl) antEl.innerHTML = db.settings.apiKey ? '<span style="color:var(--green)">✓ Chave configurada</span>' : '<span style="color:var(--text-muted)">Não configurada</span>';
+  if (gemEl) gemEl.innerHTML = db.settings.geminiKey ? '<span style="color:var(--green)">✓ Chave configurada</span>' : '<span style="color:var(--text-muted)">Não configurada</span>';
+}
+
+function saveGeminiKey() {
+  const key = document.getElementById('settings-gemini-key').value.trim();
+  db.settings.geminiKey = key;
+  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  updateAPIStatus();
+  toast(key ? 'Chave Gemini salva! Será usada como padrão.' : 'Chave Gemini removida.');
+}
+
+function closeSettings() {
+  document.getElementById('modal-settings').classList.remove('show');
+}
+
+function saveSettings() {
+  db.settings.apiKey = document.getElementById('settings-api-key').value.trim();
+  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  closeSettings();
+  toast('Configurações salvas!');
+}
+
+function resetarProgresso() {
+  if (!confirm('Tem certeza? Isso apagará apenas suas RESPOSTAS (não as questões).')) return;
+  db.respostas = [];
+  saveDB();
+  renderStats();
+  toast('Progresso resetado!', 'info');
+}
+
+document.getElementById('modal-settings').addEventListener('click', function(e) {
+  if (e.target === this) closeSettings();
+});
+
+
+// Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
+Object.assign(window, {
+  // Matérias & Tópicos
+  saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList,
+  toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
+  populateTopicosSelect, atualizarTopicosIA,
+  // Settings
+  openSettings, closeSettings, saveSettings, resetarProgresso,
+  showSettingsTab, updateSettingsStats, saveGeminiKey,
+  // IA
+  gerarComIA, buildPromptIA, chamarGemini, chamarAnthropic,
+  renderAIResultados, salvarTodasIA, salvarUmaIA, descartarQuestaoIA,
+  // Admin
+  // Utilitários
+  isAdmin, showTab, toast, renderMd,
+  populateSelects, buildOpcoesForm, atualizarTopicosBanco, atualizarTopicosQuiz,
+  renderBanco, startQuizFromFilter, renderQuizStart,
+  abrirQuestaoSozinha, startQuiz, iniciarSessao, selectOption,
+  confirmarResposta, proximaQuestao, skipQuestion, mostrarResultado,
+  setGabarito, salvarQuestaoManual, limparForm,
+  renderInicio, renderStats, renderRevisao, startRevisaoQuiz,
+  lerArquivoJSON, validarImport, confirmarImport,
+  abrirEditarComentario, salvarComentarioEditado,
+  abrirEditarQuestao, fecharEditarQuestao, setEditGabarito, salvarEdicaoQuestao,
+  excluirQuestao, apagarPorFonte, apagarTodasQuestoes,
+  genId, getUltimaResposta, updateBadge,
+});
+
+
+function renderMd(text) {
+  if (!text) return '';
+  let h = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h = h.replace(/[*][*]([^*]+)[*][*]/g, function(m,g){return '<strong>'+g+'</strong>';});
+  h = h.replace(/[*]([^*]+)[*]/g, function(m,g){return '<em>'+g+'</em>';});
+  h = h.split('\n- ').join('<br><span style="padding-left:10px">• </span>');
+  h = h.split('\n• ').join('<br><span style="padding-left:10px">• </span>');
+  h = h.split('\n\n').join('<br><br>');
+  h = h.split('\n').join('<br>');
+  return h;
+}
+
+// =============================================
+// START
+// =============================================
+init();
 </script>
-
 </body>
 </html>
