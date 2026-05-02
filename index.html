@@ -855,7 +855,6 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
   <div class="tab-content" id="tab-stats">
     <div class="page-header">
       <div><h2>📊 Estatísticas</h2><p>Seu desempenho detalhado</p></div>
-      <button class="btn btn-danger btn-sm" onclick="resetarProgresso()">🗑 Resetar Progresso</button>
     </div>
     <div class="page-body">
       <div class="stats-grid" id="stats-grid"></div>
@@ -976,33 +975,6 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
           <button class="btn btn-ghost btn-sm" onclick="carregarCodigos()">🔄 Atualizar</button>
         </div>
         <div id="admin-codigos-list"><p style="color:var(--text-muted);font-size:13px">Clique em Atualizar para carregar.</p></div>
-      </div>
-      <!-- GERENCIAR QUESTÕES -->
-      <div class="form-section" style="margin-bottom:14px">
-        <h3>🗑 Gerenciar Banco de Questões</h3>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--red-light);border-radius:8px;flex-wrap:wrap">
-            <div style="flex:1">
-              <p style="font-size:13.5px;font-weight:600;color:var(--red)">🗑 Apagar questões por fonte</p>
-              <p style="font-size:12px;color:var(--text-muted);margin-top:2px">Apaga apenas as questões de uma fonte específica</p>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <select class="filter-select" id="delete-fonte-select">
-                <option value="importado">Importado (JSON)</option>
-                <option value="manual">Manual</option>
-                <option value="ia">Gerado por IA</option>
-              </select>
-              <button class="btn btn-danger btn-sm" onclick="apagarPorFonte()">Apagar</button>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--red-light);border-radius:8px;flex-wrap:wrap">
-            <div style="flex:1">
-              <p style="font-size:13.5px;font-weight:600;color:var(--red)">💣 Apagar TODAS as questões</p>
-              <p style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove permanentemente todas as questões. Ação irreversível!</p>
-            </div>
-            <button class="btn btn-danger btn-sm" onclick="apagarTodasQuestoes()">Apagar Tudo</button>
-          </div>
-        </div>
       </div>
       <!-- LISTA ALUNOS -->
       <div class="form-section">
@@ -1288,15 +1260,22 @@ function renderMateriasList() {
     const count = qs.length;
     const safe = a.replace(/'/g, "\\'");
     const topicos = [...new Set(qs.filter(q => q.topico).map(q => q.topico))].sort();
-    const topicosHTML = topicos.length ? topicos.map(t => {
+    const topicosDB = db.topicos[a] || [];
+    const todosTopicos = [...new Set([...topicos, ...topicosDB])].sort();
+    const topicosHTML = todosTopicos.map(t => {
       const tCount = qs.filter(q => q.topico === t).length;
-      const tSafe = t.replace(/'/g, "\\'");
+      const tSafe = t.replace(/'/g, "\'");
       return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border)">
         <span style="flex:1;font-size:12.5px;color:var(--text-mid)">${t}</span>
         <span style="font-size:11px;color:var(--text-muted)">${tCount}q</span>
-        <button onclick="renomearTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:1px 5px" title="Renomear tópico">✏️</button>
+        <button onclick="renomearTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:1px 5px" title="Renomear">✏️</button>
+        <button onclick="removerTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:1px 5px" title="Remover">🗑</button>
       </div>`;
-    }).join('') : '<p style="font-size:12px;color:var(--text-muted);padding:6px 0">Nenhum tópico mapeado.</p>';
+    }).join('') + `<div style="display:flex;gap:6px;margin-top:6px;padding-top:4px">
+      <input id="novo-topico-${idx}" class="form-input" style="flex:1;font-size:12px;padding:5px 8px" placeholder="Novo tópico..." onkeydown="if(event.key==='Enter'){adicionarTopico('${safe}',this.value).then(()=>{this.value='';})}">
+      <button onclick="adicionarTopico('${safe}',document.getElementById('novo-topico-${idx}').value).then(()=>{document.getElementById('novo-topico-${idx}').value=''})"
+        style="padding:5px 10px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap">+ Adicionar</button>
+    </div>`;
     return `<div style="border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px;padding:9px 0;cursor:pointer" onclick="toggleMateriaTopicos('mtop-${idx}','mchev-${idx}')">
         <span style="font-size:12px;color:var(--text-muted);transition:transform .2s" id="mchev-${idx}">▶</span>
@@ -1346,6 +1325,7 @@ let db = {
   questoes: [],
   respostas: [],
   settings: JSON.parse(localStorage.getItem('pcap_settings') || '{}'),
+  topicos: {}, // { assunto: [topico1, topico2, ...] }
 };
 
 function isAdmin() {
@@ -1434,6 +1414,75 @@ async function renomearMateriaFirestore(nomeAntigo, nomeNovo) {
   await deleteDoc(doc(db_fire, 'materias', materiaId(nomeAntigo)));
 }
 
+// =============================================
+// TÓPICOS — Firestore
+// =============================================
+function topicoId(assunto, topico) {
+  return materiaId(assunto) + '__' + materiaId(topico);
+}
+
+async function carregarTopicos() {
+  try {
+    const { db_fire, collection, getDocs } = window._fire;
+    const snap = await getDocs(collection(db_fire, 'topicos'));
+    db.topicos = {};
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!db.topicos[data.assunto]) db.topicos[data.assunto] = [];
+      if (!db.topicos[data.assunto].includes(data.topico)) {
+        db.topicos[data.assunto].push(data.topico);
+      }
+    });
+    // Ordena
+    Object.keys(db.topicos).forEach(a => db.topicos[a].sort());
+    // Salva cache
+    localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  } catch(e) {
+    const cached = JSON.parse(localStorage.getItem('pcap_topicos') || 'null');
+    if (cached) db.topicos = cached;
+  }
+}
+
+async function adicionarTopico(assunto, topico) {
+  topico = topico.trim();
+  if (!topico) { toast('Digite um nome para o tópico!', 'error'); return; }
+  if (!db.topicos[assunto]) db.topicos[assunto] = [];
+  if (db.topicos[assunto].includes(topico)) { toast('Tópico já existe!', 'error'); return; }
+  db.topicos[assunto].push(topico);
+  db.topicos[assunto].sort();
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  if (isAdmin()) {
+    const { db_fire, doc, setDoc } = window._fire;
+    await setDoc(doc(db_fire, 'topicos', topicoId(assunto, topico)), { assunto, topico });
+  }
+  renderMateriasList();
+  populateTopicosSelect(assunto);
+  toast(`Tópico "${topico}" adicionado!`);
+}
+
+async function removerTopico(assunto, topico) {
+  if (!confirm(`Remover tópico "${topico}"?`)) return;
+  if (db.topicos[assunto]) {
+    db.topicos[assunto] = db.topicos[assunto].filter(t => t !== topico);
+  }
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  if (isAdmin()) {
+    const { db_fire, doc, deleteDoc } = window._fire;
+    await deleteDoc(doc(db_fire, 'topicos', topicoId(assunto, topico)));
+  }
+  renderMateriasList();
+  populateTopicosSelect(assunto);
+  toast('Tópico removido!', 'info');
+}
+
+async function garantirTopico(assunto, topico) {
+  if (!topico || !assunto) return;
+  if (!db.topicos[assunto]) db.topicos[assunto] = [];
+  if (!db.topicos[assunto].includes(topico)) {
+    await adicionarTopico(assunto, topico);
+  }
+}
+
 // Atualiza comentário de questão (só admin)
 async function atualizarComentarioFirestore(qid, comentario) {
   if (!isAdmin()) return;
@@ -1453,9 +1502,11 @@ function genId() {
 }
 
 function getTopicos(assunto) {
-  const qs = assunto ? db.questoes.filter(q => q.assunto === assunto) : db.questoes;
-  const topicos = [...new Set(qs.map(q => q.topico).filter(Boolean))].sort();
-  return topicos;
+  const fromDB = db.topicos[assunto] || [];
+  const fromQuestoes = assunto
+    ? db.questoes.filter(q => q.assunto === assunto && q.topico).map(q => q.topico)
+    : db.questoes.filter(q => q.topico).map(q => q.topico);
+  return [...new Set([...fromDB, ...fromQuestoes])].sort();
 }
 
 function atualizarTopicosBanco() {
@@ -1505,6 +1556,7 @@ function showTab(tab) {
 // =============================================
 async function init() {
   await carregarMaterias();
+  await carregarTopicos();
   populateSelects();
   buildOpcoesForm();
   // Mostra abas admin
@@ -1514,9 +1566,23 @@ async function init() {
   // Carrega dados do Firestore
   await carregarQuestoes();
   await carregarRespostas();
+  // Sincroniza tópicos das questões importadas
+  sincronizarTopicosDeQuestoes();
   updateBadge();
   renderInicio();
   // API key carregada ao abrir settings
+}
+
+function sincronizarTopicosDeQuestoes() {
+  // Garante que tópicos presentes nas questões existam em db.topicos (sem salvar no Firestore)
+  db.questoes.forEach(q => {
+    if (!q.assunto || !q.topico) return;
+    if (!db.topicos[q.assunto]) db.topicos[q.assunto] = [];
+    if (!db.topicos[q.assunto].includes(q.topico)) {
+      db.topicos[q.assunto].push(q.topico);
+    }
+  });
+  Object.keys(db.topicos).forEach(a => db.topicos[a].sort());
 }
 
 function populateSelects() {
@@ -1539,9 +1605,7 @@ function populateSelects() {
 function populateTopicosSelect(assunto) {
   const el = document.getElementById('cad-topico');
   if (!el) return;
-  const topicos = [...new Set(
-    db.questoes.filter(q => q.assunto === assunto && q.topico).map(q => q.topico)
-  )].sort();
+  const topicos = db.topicos[assunto] || [];
   el.innerHTML = topicos.length
     ? topicos.map(t => `<option value="${t}">${t}</option>`).join('')
     : '<option value="">— Sem tópicos cadastrados —</option>';
@@ -2262,14 +2326,18 @@ async function confirmarImport() {
   if (!novas.length) { toast('Nenhuma questão nova para importar!', 'info'); return; }
 
   let saved = 0;
+  const topicosNovos = new Set();
+
   for (const q of novas) {
+    const assunto = q.materia || q.assunto || ASSUNTOS[0];
+    const topico = q.topico || '';
     const obj = {
       id: genId(),
       enunciado: q.enunciado,
       opcoes: q.opcoes,
       gabarito: q.gabarito,
-      assunto: q.materia || q.assunto || ASSUNTOS[0],
-      topico: q.topico || '',
+      assunto,
+      topico,
       banca: q.banca || '',
       ano: q.ano || null,
       dificuldade: q.dificuldade || 'Médio',
@@ -2278,8 +2346,25 @@ async function confirmarImport() {
       createdAt: Date.now(),
     };
     await salvarQuestaoFirestore(obj);
+    // Registra tópico para salvar depois
+    if (topico && assunto) topicosNovos.add(JSON.stringify({assunto, topico}));
     saved++;
   }
+
+  // Salva tópicos novos no Firestore
+  for (const item of topicosNovos) {
+    const {assunto, topico} = JSON.parse(item);
+    if (!db.topicos[assunto]) db.topicos[assunto] = [];
+    if (!db.topicos[assunto].includes(topico)) {
+      db.topicos[assunto].push(topico);
+      if (isAdmin()) {
+        const { db_fire, doc, setDoc } = window._fire;
+        await setDoc(doc(db_fire, 'topicos', topicoId(assunto, topico)), { assunto, topico });
+      }
+    }
+  }
+  Object.keys(db.topicos).forEach(a => db.topicos[a].sort());
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
 
   toast(`${saved} questão(ões) importada(s) com sucesso!`);
   document.getElementById('import-json').value = '';
@@ -2496,7 +2581,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 
 // Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
 Object.assign(window, {
-  saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, toggleMateriaTopicos, renomearTopico, populateTopicosSelect,
+  saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, toggleMateriaTopicos, renomearTopico, removerTopico, adicionarTopico, populateTopicosSelect, sincronizarTopicosDeQuestoes,
   isAdmin, showTab, toast,
   populateSelects, buildOpcoesForm, atualizarTopicosBanco, atualizarTopicosQuiz,
   renderBanco, startQuizFromFilter, renderQuizStart,
