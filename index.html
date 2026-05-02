@@ -590,7 +590,7 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     <div class="nav-item active" onclick="showTab('inicio')">
       <span class="icon">🏠</span><span>Início</span>
     </div>
-    <div class="nav-item" onclick="showTab('banco')">
+    <div class="nav-item admin-only" style="display:none" onclick="showTab('banco')">
       <span class="icon">📚</span><span>Banco de Questões</span>
       <span class="nav-badge" id="badge-total">0</span>
     </div>
@@ -711,56 +711,34 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
   <!-- QUIZ -->
   <div class="tab-content" id="tab-quiz">
     <div class="page-header">
-      <div><h2>✏️ Responder Questões</h2><p id="quiz-subtitle">Configure e inicie uma sessão</p></div>
-      <button class="btn btn-ghost btn-sm" onclick="showTab('banco')">← Voltar ao Banco</button>
+      <div><h2>✏️ Responder Questões</h2><p id="quiz-subtitle">Selecione uma questão ou use os filtros</p></div>
+      <button class="btn btn-primary btn-sm" onclick="startQuizFromFilter()">▶ Responder Filtro</button>
     </div>
     <div class="page-body">
-      <!-- CONFIG -->
+      <!-- FILTROS ESTILO TEC -->
       <div class="quiz-container" id="quiz-start-screen">
-        <div class="form-section">
-          <h3>Configurar Sessão</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Matéria</label>
-              <select class="form-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz()">
-                <option value="">Todas as Matérias</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Tópico</label>
-              <select class="form-select" id="quiz-filter-topico">
-                <option value="">Todos os Tópicos</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Dificuldade</label>
-              <select class="form-select" id="quiz-filter-dif">
-                <option value="">Todas</option>
-                <option value="Fácil">Fácil</option>
-                <option value="Médio">Médio</option>
-                <option value="Difícil">Difícil</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Quantidade</label>
-              <select class="form-select" id="quiz-qtd">
-                <option value="5">5 questões</option>
-                <option value="10" selected>10 questões</option>
-                <option value="20">20 questões</option>
-                <option value="0">Todas</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Modo</label>
-              <select class="form-select" id="quiz-modo">
-                <option value="todas">Todas</option>
-                <option value="nao_respondida">Não Respondidas</option>
-                <option value="errada">Somente Erradas</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn btn-primary btn-lg" onclick="startQuiz()">▶ Iniciar Sessão</button>
+        <div class="filters-bar" style="margin-bottom:16px">
+          <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz();renderQuizList()">
+            <option value="">Todas as Matérias</option>
+          </select>
+          <select class="filter-select" id="quiz-filter-topico" onchange="renderQuizList()">
+            <option value="">Todos os Tópicos</option>
+          </select>
+          <select class="filter-select" id="quiz-filter-dif" onchange="renderQuizList()">
+            <option value="">Dificuldade</option>
+            <option value="Fácil">Fácil</option>
+            <option value="Médio">Médio</option>
+            <option value="Difícil">Difícil</option>
+          </select>
+          <select class="filter-select" id="quiz-modo" onchange="renderQuizList()">
+            <option value="todas">Todas</option>
+            <option value="nao_respondida">Não Respondidas</option>
+            <option value="errada">Somente Erradas</option>
+            <option value="correta">Acertadas</option>
+          </select>
         </div>
+        <p id="quiz-list-count" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></p>
+        <div id="quiz-questions-list" class="questions-list"></div>
       </div>
       <!-- SESSION -->
       <div class="quiz-container" id="quiz-session" style="display:none">
@@ -1180,18 +1158,76 @@ Exemplos:
 // =============================================
 const MATERIAS_DEFAULT = [
   'Lei Orgânica PC-AP (0883/2005)',
-  'Estatuto dos Policiais Civis do AP',
-  'Regimento Interno PC-AP',
-  'Código de Ética PC-AP',
-  'Constituição do Estado do Amapá',
-  'Código Penal',
-  'Código de Processo Penal',
-  'Lei de Drogas (11.343/2006)',
-  'Lei Maria da Penha (11.340/2006)',
-  'ECA (8.069/1990)',
-  'LEP (7.210/1984)',
-  'Lei 14.133/2021',
+  'Lei 066/1993 - Regime Jurídico dos Servidores Civis do AP',
+  'História do Amapá',
+  'Geografia do Amapá',
 ];
+
+const TOPICOS_DEFAULT = {
+  'Lei Orgânica PC-AP (0883/2005)': [
+    'Natureza e Princípios da PC-AP',
+    'Atribuições da PC-AP',
+    'Símbolos e Data Oficial',
+    'Estrutura Orgânica — DGPC, Corregedoria, Conselho Superior',
+    'Provimento, Investidura e Curso de Formação',
+    'Estágio Probatório e Estabilidade',
+    'Remoção',
+    'Carreiras Policiais',
+    'Progressão e Promoção',
+    'Prerrogativas e Vedações',
+    'Recompensas e Honrarias',
+    'Férias e Licenças',
+    'Remuneração e Vantagens',
+    'Deveres Funcionais',
+    'Regime Disciplinar — Infrações e Penalidades',
+  ],
+  'Lei 066/1993 - Regime Jurídico dos Servidores Civis do AP': [
+    'Disposições Preliminares',
+    'Provimento',
+    'Concurso Público, Posse e Exercício',
+    'Movimentação',
+    'Vacância e Substituição',
+    'Vencimento e Remuneração',
+    'Vantagens — Indenizações, Adicionais e Gratificações',
+    'Férias e Licenças',
+    'Afastamentos e Concessões',
+    'Regime Disciplinar — Deveres e Proibições',
+    'Regime Disciplinar — Penalidades',
+    'Processo Administrativo Disciplinar',
+    'Seguridade Social',
+    'Aposentadoria',
+  ],
+  'História do Amapá': [
+    'Povos originários',
+    'Grandes Navegações / ocupação colonial',
+    'Políticas coloniais lusitanas (Pombal, Mazagão, Fortaleza)',
+    'Economias coloniais (drogas do sertão, borracha, escravidão)',
+    'Presença africana (quilombos, escravidão, mocambos)',
+    'Cabanagem',
+    'Políticas do Estado séc. XIX e XX (Clevelândia, colonização)',
+    'Questão fronteiriça / Tratados',
+    'Território Federal (1943–1988)',
+    'Constituição 1988 / Estadualização',
+    'Novos fluxos / mineração contemporânea (ICOMI, Jari)',
+    'Patrimônio cultural (Marabaixo, São Tiago, Fortaleza)',
+  ],
+  'Geografia do Amapá': [
+    'Localização do Amapá',
+    'Geologia, Rochas e Solos',
+    'Relevo Amapaense',
+    'Clima Amapaense',
+    'Domínios Florísticos',
+    'Hidrografia Amapaense',
+    'Unidades de Conservação',
+    'População Amapaense',
+    'Migrações no Amapá',
+    'Povos e Terras Indígenas do Amapá',
+    'Economia e PIB',
+    'Projetos Econômicos',
+    'Divisão Política do Amapá',
+    'Amapá no Contexto Nacional',
+  ],
+};
 
 let ASSUNTOS = JSON.parse(localStorage.getItem('pcap_materias') || 'null') || [...MATERIAS_DEFAULT];
 
@@ -1259,6 +1295,7 @@ function renderMateriasList() {
       return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border)">
         <span style="flex:1;font-size:12.5px;color:var(--text-mid)">${t}</span>
         <span style="font-size:11px;color:var(--text-muted)">${tCount}q</span>
+        <button onclick="verQuestoesBanco('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:13px;padding:1px 5px" title="Ver questões">👁</button>
         <button onclick="renomearTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:1px 5px">✏️</button>
         <button onclick="removerTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;padding:1px 5px">🗑</button>
       </div>`;
@@ -1271,6 +1308,7 @@ function renderMateriasList() {
         <span style="font-size:12px;color:var(--text-muted);transition:transform .2s" id="mchev-${idx}">▶</span>
         <span style="flex:1;font-size:13.5px;font-weight:600;color:var(--text)">${a}</span>
         <span style="font-size:11px;color:var(--text-muted)">${count}q</span>
+        <button onclick="event.stopPropagation();verQuestoesBanco('${safe}','')" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:14px;padding:2px 5px" title="Ver questões">👁</button>
         <button onclick="event.stopPropagation();renomearMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:2px 5px">✏️</button>
         <button onclick="event.stopPropagation();removerMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;padding:2px 5px">🗑</button>
       </div>
@@ -1358,7 +1396,17 @@ async function carregarTopicos() {
   } catch(e) {
     const cached = JSON.parse(localStorage.getItem('pcap_topicos') || 'null');
     if (cached) db.topicos = cached;
+    else db.topicos = { ...TOPICOS_DEFAULT };
   }
+  // Garante que os tópicos padrão sempre existam mesmo que o Firestore tenha outros
+  for (const [materia, topicos] of Object.entries(TOPICOS_DEFAULT)) {
+    if (!db.topicos[materia]) db.topicos[materia] = [];
+    for (const t of topicos) {
+      if (!db.topicos[materia].includes(t)) db.topicos[materia].push(t);
+    }
+    db.topicos[materia].sort();
+  }
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
 }
 
 async function adicionarTopico(assunto, topico) {
@@ -1505,7 +1553,7 @@ function showTab(tab) {
   });
   if (tab === 'inicio') renderInicio();
   if (tab === 'banco') renderBanco();
-  if (tab === 'quiz') renderQuizStart();
+  if (tab === 'quiz') { renderQuizList(); }
   if (tab === 'stats') renderStats();
   if (tab === 'revisao') renderRevisao();
   if (tab === 'gerar') populateAISelects();
@@ -1711,6 +1759,70 @@ function buildPool(ids) {
   if (!ids && qtd > 0 && pool.length > qtd) pool = pool.slice(0, qtd);
   return pool;
 }
+
+function renderQuizList() {
+  const assunto = document.getElementById('quiz-filter-assunto')?.value || '';
+  const topico = document.getElementById('quiz-filter-topico')?.value || '';
+  const dif = document.getElementById('quiz-filter-dif')?.value || '';
+  const modo = document.getElementById('quiz-modo')?.value || 'todas';
+
+  let pool = [...db.questoes].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+  if (assunto) pool = pool.filter(q => q.assunto === assunto);
+  if (topico) pool = pool.filter(q => q.topico === topico);
+  if (dif) pool = pool.filter(q => q.dificuldade === dif);
+  if (modo === 'nao_respondida') pool = pool.filter(q => !getUltimaResposta(q.id));
+  if (modo === 'errada') pool = pool.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
+  if (modo === 'correta') pool = pool.filter(q => { const r=getUltimaResposta(q.id); return r&&r.correta; });
+
+  const el = document.getElementById('quiz-questions-list');
+  const count = document.getElementById('quiz-list-count');
+  if (count) count.textContent = `${pool.length} questão(ões) encontrada(s)`;
+
+  if (!pool.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><h3>Nenhuma questão encontrada</h3><p>Tente outros filtros.</p></div>';
+    return;
+  }
+
+  el.innerHTML = pool.map((q, i) => {
+    const r = getUltimaResposta(q.id);
+    const status = r ? (r.correta ? '✅' : '❌') : '⬜';
+    const difTag = q.dificuldade === 'Fácil' ? 'tag-green' : q.dificuldade === 'Difícil' ? 'tag-red' : 'tag-amber';
+    return `<div class="question-item" onclick="iniciarQuizDaQuestao('${q.id}', ${i}, ${JSON.stringify(pool.map(x=>x.id)).replace(/"/g,"'")})">
+      <span class="q-number">${status}</span>
+      <div class="q-content">
+        <p class="q-enunciado">${q.enunciado.slice(0,120)}${q.enunciado.length>120?'…':''}</p>
+        <div class="q-tags">
+          <span class="tag tag-blue">${q.assunto.split('(')[0].trim()}</span>
+          ${q.topico ? `<span class="tag tag-gray">${q.topico}</span>` : ''}
+          <span class="tag ${difTag}">${q.dificuldade}</span>
+          ${q.banca ? `<span class="tag tag-gray">${q.banca}${q.ano?' '+q.ano:''}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function iniciarQuizDaQuestao(id, idx, ids) {
+  const pool = ids.map(i => db.questoes.find(q => q.id === i)).filter(Boolean);
+  const from = pool.slice(idx);
+  if (!from.length) return;
+  document.getElementById('quiz-start-screen').style.display = 'none';
+  iniciarSessao(from);
+}
+
+window.verQuestoesBanco = function(assunto, topico) {
+  closeSettings();
+  showTab('banco');
+  setTimeout(() => {
+    const selAssunto = document.getElementById('filter-assunto');
+    if (selAssunto) { selAssunto.value = assunto; atualizarTopicosBanco(); }
+    setTimeout(() => {
+      const selTopico = document.getElementById('filter-topico');
+      if (selTopico && topico) selTopico.value = topico;
+      renderBanco();
+    }, 50);
+  }, 50);
+};
 
 function startQuiz() {
   const pool = buildPool(null);
@@ -2188,21 +2300,49 @@ function renderStats() {
   </div>`).join('');
 
   const el = document.getElementById('stats-assuntos');
-  const rows = ASSUNTOS.map(a => {
+  const rows = ASSUNTOS.map((a, idx) => {
     const qs = db.questoes.filter(q => q.assunto === a);
     if (!qs.length) return null;
     const rs = db.respostas.filter(r => qs.find(q => q.id === r.questionId));
     const acc = rs.filter(r => r.correta).length;
     const pct = rs.length ? Math.round((acc/rs.length)*100) : 0;
     const color = pct>=70?'var(--green)':pct>=50?'var(--blue)':pct>0?'var(--amber)':'var(--text-muted)';
-    return `<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1">
-        <p style="font-size:13.5px;font-weight:600">${a}</p>
-        <p style="font-size:12px;color:var(--text-muted)">${qs.length} questão(ões) · ${rs.length} respondida(s)</p>
+
+    // Tópicos da matéria
+    const topicos = [...new Set([
+      ...((db.topicos && db.topicos[a]) || []),
+      ...qs.filter(q=>q.topico).map(q=>q.topico)
+    ])].sort();
+
+    const topicosHTML = topicos.map(t => {
+      const tQs = qs.filter(q => q.topico === t);
+      const tRs = db.respostas.filter(r => tQs.find(q => q.id === r.questionId));
+      const tAcc = tRs.filter(r => r.correta).length;
+      const tPct = tRs.length ? Math.round((tAcc/tRs.length)*100) : 0;
+      const tColor = tPct>=70?'var(--green)':tPct>=50?'var(--blue)':tPct>0?'var(--amber)':'var(--text-muted)';
+      const tBar = tRs.length ? `<div class="progress-bar-wrap" style="margin-top:4px"><div class="progress-bar-fill" style="width:${tPct}%;background:${tColor}"></div></div>` : '';
+      return `<div style="padding:7px 0;border-bottom:0.5px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="flex:1;font-size:12.5px;color:var(--text-mid)">${t}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${tQs.length}q · ${tRs.length} resp.</span>
+          <span style="font-size:13px;font-weight:700;color:${tColor};min-width:36px;text-align:right">${tRs.length?tPct+'%':'—'}</span>
+        </div>
+        ${tBar}
+      </div>`;
+    }).join('');
+
+    return `<div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;cursor:pointer" onclick="toggleMateriaTopicos('stop-${idx}','schev-${idx}')">
+        <span style="font-size:11px;color:var(--text-muted);transition:transform .2s" id="schev-${idx}">▶</span>
+        <div style="flex:1">
+          <p style="font-size:13.5px;font-weight:600">${a}</p>
+          <p style="font-size:12px;color:var(--text-muted)">${qs.length} questão(ões) · ${rs.length} respondida(s)</p>
+        </div>
+        <div style="text-align:right;min-width:60px">
+          <p style="font-family:'Sora',sans-serif;font-size:20px;font-weight:700;color:${color}">${rs.length?pct+'%':'—'}</p>
+        </div>
       </div>
-      <div style="text-align:right;min-width:60px">
-        <p style="font-family:'Sora',sans-serif;font-size:20px;font-weight:700;color:${color}">${rs.length?pct+'%':'—'}</p>
-      </div>
+      ${topicosHTML ? `<div id="stop-${idx}" style="display:none;background:var(--surface);border-radius:8px;margin:0 0 10px 16px;padding:4px 12px">${topicosHTML}</div>` : ''}
     </div>`;
   }).filter(Boolean);
 
@@ -2344,6 +2484,48 @@ async function confirmarImport() {
   const novas = (window._importNovas || []).filter(q => !q.jaExiste);
   if (!novas.length) { toast('Nenhuma questão nova para importar!', 'info'); return; }
 
+  const { db_fire, doc, setDoc, getDoc, collection, getDocs } = window._fire;
+
+  // Coleta matérias e tópicos únicos do JSON
+  const materiasNovas = new Set();
+  const topicosNovos = []; // [{assunto, topico}]
+
+  for (const q of novas) {
+    const assunto = q.materia || q.assunto || ASSUNTOS[0];
+    if (assunto) materiasNovas.add(assunto);
+    if (assunto && q.topico) {
+      const ja = topicosNovos.find(t => t.assunto === assunto && t.topico === q.topico);
+      if (!ja) topicosNovos.push({ assunto, topico: q.topico });
+    }
+  }
+
+  // Registra matérias novas no Firestore
+  const snapMaterias = await getDocs(collection(db_fire, 'materias'));
+  const materiasExistentes = new Set(snapMaterias.docs.map(d => d.data().nome));
+  for (const nome of materiasNovas) {
+    if (!materiasExistentes.has(nome)) {
+      await setDoc(doc(db_fire, 'materias', materiaId(nome)), { nome });
+      ASSUNTOS.push(nome);
+    }
+  }
+  ASSUNTOS = [...new Set(ASSUNTOS)].sort();
+  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+
+  // Registra tópicos novos no Firestore
+  const snapTopicos = await getDocs(collection(db_fire, 'topicos'));
+  const topicosExistentes = new Set(snapTopicos.docs.map(d => d.id));
+  for (const { assunto, topico } of topicosNovos) {
+    const docId = materiaId(assunto) + '__' + materiaId(topico);
+    if (!topicosExistentes.has(docId)) {
+      await setDoc(doc(db_fire, 'topicos', docId), { assunto, topico });
+      if (!db.topicos[assunto]) db.topicos[assunto] = [];
+      if (!db.topicos[assunto].includes(topico)) db.topicos[assunto].push(topico);
+    }
+  }
+  Object.keys(db.topicos).forEach(a => db.topicos[a].sort());
+  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+
+  // Salva as questões
   let saved = 0;
   for (const q of novas) {
     const obj = {
@@ -2364,7 +2546,10 @@ async function confirmarImport() {
     saved++;
   }
 
-  toast(`${saved} questão(ões) importada(s) com sucesso!`);
+  // Atualiza os selects com as novas matérias/tópicos
+  populateSelects();
+
+  toast(`${saved} questão(ões) importada(s)! Matérias e tópicos registrados automaticamente.`);
   document.getElementById('import-json').value = '';
   document.getElementById('import-preview').innerHTML = '';
   window._importNovas = [];
@@ -2591,6 +2776,7 @@ Object.assign(window, {
   isAdmin, showTab, toast, renderMd,
   populateSelects, buildOpcoesForm, atualizarTopicosBanco, atualizarTopicosQuiz,
   renderBanco, startQuizFromFilter, renderQuizStart,
+  renderQuizList, iniciarQuizDaQuestao,
   abrirQuestaoSozinha, startQuiz, iniciarSessao, selectOption,
   confirmarResposta, proximaQuestao, skipQuestion, mostrarResultado,
   setGabarito, salvarQuestaoManual, limparForm,
