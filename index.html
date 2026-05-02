@@ -428,6 +428,9 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 /* MODAL */
 .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:100; }
 .modal-overlay.show { display:flex; }
+.settings-tab { background:none; border:none; border-bottom:2px solid transparent; padding:8px 16px; font-size:13px; color:var(--text-muted); cursor:pointer; white-space:nowrap; font-family:inherit; }
+.settings-tab.active { color:var(--primary); border-bottom:2px solid var(--primary); font-weight:600; }
+.settings-tab:hover:not(.active) { color:var(--text); }
 .modal { background:var(--card); border-radius:16px; padding:28px; width:100%; max-width:530px; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
 .modal h3 { font-family:'Sora',sans-serif; font-size:17px; font-weight:700; margin-bottom:6px; }
 .modal > p { font-size:13px; color:var(--text-mid); margin-bottom:20px; }
@@ -763,8 +766,8 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
             <select class="form-select" id="cad-assunto"></select>
           </div>
           <div class="form-group">
-            <label>Tópico / Artigo</label>
-            <input class="form-input" id="cad-topico" placeholder="Ex: Art. 22 da Lei 0883/2005">
+            <label>Tópico</label>
+            <select class="form-select" id="cad-topico"></select>
           </div>
         </div>
         <div class="form-row">
@@ -879,43 +882,55 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     <div class="page-header">
       <div><h2>📥 Importar JSON</h2><p>Importe uma bateria de questões em formato JSON</p></div>
     </div>
-    <div class="page-body" style="max-width:860px">
+    <div class="page-body" style="max-width:700px">
 
+      <!-- Drop zone -->
       <div class="form-section">
-        <h3>Formato esperado</h3>
-        <pre style="background:var(--bg);border-radius:8px;padding:14px;font-size:12px;overflow-x:auto;color:var(--text-mid);line-height:1.6">[
-  {
-    "enunciado": "Texto da questão...",
-    "opcoes": { "A": "...", "B": "...", "C": "...", "D": "...", "E": "..." },
-    "gabarito": "B",
-    "materia": "Lei Orgânica PC-AP (0883/2005)",
-    "dificuldade": "Médio",
-    "banca": "CESPE",
-    "ano": 2023,
-    "comentario": "Fundamentação opcional..."
-  }
-]</pre>
-        <p style="font-size:12.5px;color:var(--text-muted);margin-top:10px">Campos obrigatórios: <strong>enunciado</strong>, <strong>opcoes</strong>, <strong>gabarito</strong>. Os demais são opcionais.</p>
-      </div>
-
-      <div class="form-section">
-        <h3>Carregar arquivo ou colar JSON</h3>
-        <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center">
-          <label class="btn btn-outline" style="cursor:pointer">
-            📂 Escolher arquivo .json
-            <input type="file" accept=".json" id="import-file" style="display:none" onchange="lerArquivoJSON(this)">
-          </label>
-          <span style="font-size:13px;color:var(--text-muted)">ou cole o JSON abaixo:</span>
+        <h3>Arquivo JSON</h3>
+        <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s"
+          onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:28px;margin-bottom:8px">📂</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Arraste o arquivo JSON ou clique para selecionar</div>
+          <div style="font-size:12px;color:var(--text-muted)">ou cole o JSON no campo abaixo</div>
+          <input type="file" accept=".json" id="import-file" style="display:none" onchange="lerArquivoJSON(this)">
+        </label>
+        <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
+          <div style="flex:1;height:1px;background:var(--border)"></div>
+          <span style="font-size:12px;color:var(--text-muted)">ou cole o JSON</span>
+          <div style="flex:1;height:1px;background:var(--border)"></div>
         </div>
-        <textarea class="form-textarea" id="import-json" style="min-height:180px;font-family:monospace;font-size:12.5px" placeholder='[{"enunciado":"...","opcoes":{"A":"..."},"gabarito":"A"}]'></textarea>
+        <textarea class="form-textarea" id="import-json" style="min-height:120px;font-family:monospace;font-size:12px"
+          placeholder='[{"enunciado":"...","opcoes":{"A":"...","B":"..."},"gabarito":"A","assunto":"Lei Orgânica PC-AP"}]'></textarea>
         <div style="display:flex;gap:10px;margin-top:12px">
           <button class="btn btn-primary" onclick="validarImport()">🔍 Validar e Pré-visualizar</button>
-          <button class="btn btn-ghost" onclick="document.getElementById('import-json').value='';document.getElementById('import-preview').innerHTML=''">🗑 Limpar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('import-json').value='';document.getElementById('import-preview').innerHTML=''">Limpar</button>
+        </div>
+      </div>
+
+      <!-- Formato -->
+      <div class="form-section">
+        <h3>Campos aceitos</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="background:var(--surface);border-radius:8px;padding:10px 12px">
+            <div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Obrigatórios</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.8">
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">enunciado</code><br>
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">opcoes</code> — objeto A-E<br>
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">gabarito</code> — letra
+            </div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:10px 12px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Opcionais</div>
+            <div style="font-size:12px;color:var(--text);line-height:1.8">
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">assunto</code><br>
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">topico</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">dificuldade</code><br>
+              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">banca</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">ano</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">comentario</code>
+            </div>
+          </div>
         </div>
       </div>
 
       <div id="import-preview"></div>
-
     </div>
   </div>
 
@@ -1082,38 +1097,110 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 </div>
 
 <div class="modal-overlay" id="modal-settings">
-  <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
-    <h3>⚙️ Configurações</h3>
-    <p>Gerencie matérias, chave de API e dados do sistema.</p>
+  <div class="modal" style="max-width:600px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;padding:0">
 
-    <!-- API KEY -->
-    <div style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px">
-      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-mid);margin-bottom:10px">🔑 API Anthropic</p>
-      <div class="form-group">
-        <label style="font-size:11.5px;font-weight:700;color:var(--text-mid);text-transform:uppercase;letter-spacing:.6px">Chave API</label>
-        <input class="form-input" type="password" id="settings-api-key" placeholder="sk-ant-api03-...">
-        <p style="font-size:11px;color:var(--text-muted);margin-top:4px">Necessária para gerar questões com IA. Obtenha em <strong>console.anthropic.com</strong></p>
+    <!-- Header -->
+    <div style="padding:18px 20px 0;border-bottom:1px solid var(--border)">
+      <h3 style="margin-bottom:12px">⚙️ Configurações</h3>
+      <div style="display:flex;gap:0">
+        <button class="settings-tab active" onclick="showSettingsTab('materias')" id="stab-materias">📚 Matérias & Tópicos</button>
+        <button class="settings-tab" onclick="showSettingsTab('integracoes')" id="stab-integracoes">🔌 Integrações</button>
+        <button class="settings-tab" onclick="showSettingsTab('dados')" id="stab-dados">🗃 Dados</button>
       </div>
     </div>
 
-    <!-- MATÉRIAS -->
-    <div style="margin-bottom:18px">
-      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-mid);margin-bottom:10px">📚 Gerenciar Matérias</p>
+    <!-- ABA: MATÉRIAS -->
+    <div id="stab-content-materias" style="flex:1;overflow-y:auto;padding:18px 20px">
+      <!-- Stats -->
+      <div style="display:flex;gap:10px;margin-bottom:18px">
+        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px">
+          <div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-materias-count">0</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Matérias</div>
+        </div>
+        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px">
+          <div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-questoes-count">0</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Questões</div>
+        </div>
+        <div style="flex:1;background:var(--surface);border-radius:8px;padding:10px 14px">
+          <div style="font-size:20px;font-weight:700;color:var(--text)" id="stat-topicos-count">0</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Tópicos</div>
+        </div>
+      </div>
+
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-mid);margin-bottom:10px">Matérias</p>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="form-input" id="nova-materia" placeholder="Nome da nova matéria..." style="flex:1" onkeydown="if(event.key==='Enter') adicionarMateria(document.getElementById('nova-materia').value); document.getElementById('nova-materia').value=''">
-        <button class="btn btn-primary btn-sm" onclick="adicionarMateria(document.getElementById('nova-materia').value); document.getElementById('nova-materia').value=''">+ Adicionar</button>
+        <input class="form-input" id="nova-materia" placeholder="Nome da nova matéria..." style="flex:1"
+          onkeydown="if(event.key==='Enter'){adicionarMateria(this.value);this.value=''}">
+        <button class="btn btn-primary btn-sm" onclick="adicionarMateria(document.getElementById('nova-materia').value);document.getElementById('nova-materia').value=''">+ Adicionar</button>
       </div>
-      <div id="materias-list" style="max-height:220px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;padding:4px 12px"></div>
-      <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];saveMaterias();populateSelects();renderMateriasList();toast('Matérias restauradas!','info')" style="margin-top:8px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
+      <div id="materias-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 12px"></div>
+      <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];localStorage.setItem('pcap_materias',JSON.stringify(ASSUNTOS));populateSelects();renderMateriasList();toast('Matérias restauradas!','info')"
+        style="margin-top:8px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
     </div>
 
-    <div style="background:var(--blue-light);border-radius:8px;padding:11px 14px;margin-bottom:18px">
-      <p style="font-size:12px;color:var(--blue)">ℹ️ Dados salvos localmente no navegador (localStorage). Nenhuma informação enviada a servidores externos além das chamadas à API Anthropic.</p>
+    <!-- ABA: INTEGRAÇÕES -->
+    <div id="stab-content-integracoes" style="display:none;flex:1;overflow-y:auto;padding:18px 20px">
+      <div style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px">
+        <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Anthropic (Claude)</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Usada para gerar questões com IA. Obtenha em <strong>console.anthropic.com</strong></p>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" type="password" id="settings-api-key" placeholder="sk-ant-api03-..." style="flex:1">
+          <button class="btn btn-primary btn-sm" onclick="saveSettings()">Salvar</button>
+        </div>
+        <div id="anthropic-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>
+      </div>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Google Gemini <span style="font-size:11px;background:var(--green-light);color:var(--green);padding:2px 6px;border-radius:6px;margin-left:4px">Gratuito</span></p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5">Alternativa gratuita ao Claude. Obtenha em <strong>aistudio.google.com</strong></p>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" type="password" id="settings-gemini-key" placeholder="AIzaSy..." style="flex:1">
+          <button class="btn btn-primary btn-sm" onclick="saveGeminiKey()">Salvar</button>
+        </div>
+        <div id="gemini-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>
+      </div>
     </div>
 
-    <div style="display:flex;gap:10px;justify-content:flex-end">
+    <!-- ABA: DADOS -->
+    <div id="stab-content-dados" style="display:none;flex:1;overflow-y:auto;padding:18px 20px">
+      <div style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px">
+        <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Meu progresso</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Remove suas respostas e estatísticas. As questões do banco não são afetadas.</p>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Resetar meu progresso</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove todas as respostas e histórico de revisão</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="resetarProgresso();closeSettings()">Resetar</button>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Banco de questões <span style="font-size:11px;background:var(--red-light);color:var(--red);padding:2px 6px;border-radius:6px;margin-left:4px">Admin</span></p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Ações permanentes e irreversíveis sobre as questões.</p>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Apagar por fonte</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove questões de uma origem específica</div>
+          </div>
+          <select class="form-select" id="delete-fonte-select" style="width:auto;font-size:12px;padding:5px 8px">
+            <option value="importado">Importado</option>
+            <option value="manual">Manual</option>
+            <option value="ia">IA</option>
+          </select>
+          <button class="btn btn-danger btn-sm" onclick="apagarPorFonte()">Apagar</button>
+        </div>
+        <div style="border:1px solid var(--red);border-radius:8px;padding:12px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:var(--red)">Apagar TODAS as questões</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove permanentemente todo o banco</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="apagarTodasQuestoes()">Apagar tudo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeSettings()">Fechar</button>
-      <button class="btn btn-primary" onclick="saveSettings()">💾 Salvar API Key</button>
     </div>
   </div>
 </div>
@@ -1151,10 +1238,28 @@ async function adicionarMateria(nome) {
   if (!nome) { toast('Digite um nome para a matéria!', 'error'); return; }
   if (ASSUNTOS.includes(nome)) { toast('Matéria já existe!', 'error'); return; }
   ASSUNTOS.push(nome);
+  ASSUNTOS.sort();
+  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
   await salvarMateriaFirestore(nome);
   populateSelects();
   renderMateriasList();
   toast(`Matéria "${nome}" adicionada!`);
+}
+
+async function renomearMateria(nomeAntigo) {
+  const nomeNovo = prompt(`Renomear "${nomeAntigo}" para:`, nomeAntigo);
+  if (!nomeNovo || nomeNovo.trim() === nomeAntigo) return;
+  const novo = nomeNovo.trim();
+  if (ASSUNTOS.includes(novo)) { toast('Já existe uma matéria com esse nome!', 'error'); return; }
+  // Atualiza localmente
+  ASSUNTOS = ASSUNTOS.map(a => a === nomeAntigo ? novo : a);
+  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+  // Atualiza questões vinculadas localmente
+  db.questoes.forEach(q => { if (q.assunto === nomeAntigo) q.assunto = novo; });
+  await renomearMateriaFirestore(nomeAntigo, novo);
+  populateSelects();
+  renderMateriasList();
+  toast(`Matéria renomeada para "${novo}"!`);
 }
 
 async function removerMateria(nome) {
@@ -1164,6 +1269,7 @@ async function removerMateria(nome) {
     : `Remover a matéria "${nome}"?`;
   if (!confirm(msg)) return;
   ASSUNTOS = ASSUNTOS.filter(a => a !== nome);
+  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
   await removerMateriaFirestore(nome);
   populateSelects();
   renderMateriasList();
@@ -1173,14 +1279,64 @@ async function removerMateria(nome) {
 function renderMateriasList() {
   const el = document.getElementById('materias-list');
   if (!el) return;
-  el.innerHTML = ASSUNTOS.map(a => {
-    const count = db.questoes.filter(q => q.assunto === a).length;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <span style="flex:1;font-size:13.5px">${a}</span>
-      ${count ? `<span class="tag tag-blue">${count} questão(ões)</span>` : ''}
-      <button onclick="removerMateria('${a.replace(/'/g,"\\'")}');" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;padding:2px 6px;border-radius:4px" title="Remover">🗑</button>
+  if (!ASSUNTOS.length) {
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:13px;padding:12px 0">Nenhuma matéria cadastrada.</p>';
+    return;
+  }
+  el.innerHTML = ASSUNTOS.map((a, idx) => {
+    const qs = db.questoes.filter(q => q.assunto === a);
+    const count = qs.length;
+    const safe = a.replace(/'/g, "\\'");
+    const topicos = [...new Set(qs.filter(q => q.topico).map(q => q.topico))].sort();
+    const topicosHTML = topicos.length ? topicos.map(t => {
+      const tCount = qs.filter(q => q.topico === t).length;
+      const tSafe = t.replace(/'/g, "\\'");
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border)">
+        <span style="flex:1;font-size:12.5px;color:var(--text-mid)">${t}</span>
+        <span style="font-size:11px;color:var(--text-muted)">${tCount}q</span>
+        <button onclick="renomearTopico('${safe}','${tSafe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;padding:1px 5px" title="Renomear tópico">✏️</button>
+      </div>`;
+    }).join('') : '<p style="font-size:12px;color:var(--text-muted);padding:6px 0">Nenhum tópico mapeado.</p>';
+    return `<div style="border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 0;cursor:pointer" onclick="toggleMateriaTopicos('mtop-${idx}','mchev-${idx}')">
+        <span style="font-size:12px;color:var(--text-muted);transition:transform .2s" id="mchev-${idx}">▶</span>
+        <span style="flex:1;font-size:13.5px;font-weight:600;color:var(--text)">${a}</span>
+        ${count ? `<span class="tag tag-blue">${count}q</span>` : '<span style="font-size:11px;color:var(--text-muted)">0q</span>'}
+        <button onclick="event.stopPropagation();renomearMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:14px;padding:2px 5px" title="Renomear">✏️</button>
+        <button onclick="event.stopPropagation();removerMateria('${safe}')" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px;padding:2px 5px" title="Remover">🗑</button>
+      </div>
+      <div id="mtop-${idx}" style="display:none;background:var(--surface);border-radius:8px;margin:0 0 8px 16px;padding:4px 10px">
+        ${topicosHTML}
+      </div>
     </div>`;
-  }).join('') || '<p style="color:var(--text-muted);font-size:13px">Nenhuma matéria cadastrada.</p>';
+  }).join('');
+}
+
+function toggleMateriaTopicos(contentId, chevId) {
+  const c = document.getElementById(contentId);
+  const ch = document.getElementById(chevId);
+  if (!c) return;
+  const open = c.style.display === 'none';
+  c.style.display = open ? 'block' : 'none';
+  if (ch) ch.style.transform = open ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+async function renomearTopico(assunto, topicoAntigo) {
+  const novo = prompt(`Renomear tópico "\${topicoAntigo}" para:`, topicoAntigo);
+  if (!novo || novo.trim() === topicoAntigo) return;
+  const novoTrimmed = novo.trim();
+  // Atualiza questões localmente
+  db.questoes.forEach(q => {
+    if (q.assunto === assunto && q.topico === topicoAntigo) q.topico = novoTrimmed;
+  });
+  // Atualiza no Firestore
+  const { db_fire, doc, updateDoc } = window._fire;
+  const updates = db.questoes.filter(q => q.assunto === assunto && q.topico === novoTrimmed);
+  for (const q of updates) {
+    await updateDoc(doc(db_fire, 'questoes', q.id), { topico: novoTrimmed });
+  }
+  renderMateriasList();
+  toast(`Tópico renomeado!`);
 }
 
 // =============================================
@@ -1214,14 +1370,22 @@ async function carregarRespostas() {
 
 // Carrega matérias do Firestore
 async function carregarMaterias() {
-  const { db_fire, collection, getDocs } = window._fire;
   try {
+    if (!window._fire) throw new Error('Firebase não pronto');
+    const { db_fire, collection, getDocs } = window._fire;
     const snap = await getDocs(collection(db_fire, 'materias'));
     if (!snap.empty) {
       ASSUNTOS = snap.docs.map(d => d.data().nome).filter(Boolean).sort();
+      localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+    } else {
+      const cached = JSON.parse(localStorage.getItem('pcap_materias') || 'null');
+      if (cached && cached.length) ASSUNTOS = cached;
+      else ASSUNTOS = [...MATERIAS_DEFAULT];
     }
   } catch(e) {
-    ASSUNTOS = [...MATERIAS_DEFAULT];
+    const cached = JSON.parse(localStorage.getItem('pcap_materias') || 'null');
+    if (cached && cached.length) ASSUNTOS = cached;
+    else ASSUNTOS = [...MATERIAS_DEFAULT];
   }
 }
 
@@ -1243,18 +1407,31 @@ async function salvarRespostaFirestore(resposta) {
   db.respostas.push(resposta);
 }
 
+// Gera ID seguro para Firestore (sem barras e caracteres especiais)
+function materiaId(nome) {
+  return nome.replace(/[^a-zA-Z0-9_\-]/g, '_').substring(0, 100);
+}
+
 // Salva matéria no Firestore (só admin)
 async function salvarMateriaFirestore(nome) {
   if (!isAdmin()) return;
   const { db_fire, doc, setDoc } = window._fire;
-  await setDoc(doc(db_fire, 'materias', nome), { nome });
+  await setDoc(doc(db_fire, 'materias', materiaId(nome)), { nome });
 }
 
 // Remove matéria do Firestore (só admin)
 async function removerMateriaFirestore(nome) {
   if (!isAdmin()) return;
   const { db_fire, doc, deleteDoc } = window._fire;
-  await deleteDoc(doc(db_fire, 'materias', nome));
+  await deleteDoc(doc(db_fire, 'materias', materiaId(nome)));
+}
+
+// Renomeia matéria no Firestore (só admin)
+async function renomearMateriaFirestore(nomeAntigo, nomeNovo) {
+  if (!isAdmin()) return;
+  const { db_fire, doc, setDoc, deleteDoc } = window._fire;
+  await setDoc(doc(db_fire, 'materias', materiaId(nomeNovo)), { nome: nomeNovo });
+  await deleteDoc(doc(db_fire, 'materias', materiaId(nomeAntigo)));
 }
 
 // Atualiza comentário de questão (só admin)
@@ -1339,8 +1516,7 @@ async function init() {
   await carregarRespostas();
   updateBadge();
   renderInicio();
-  if (db.settings.apiKey)
-    document.getElementById('settings-api-key').value = db.settings.apiKey;
+  // API key carregada ao abrir settings
 }
 
 function populateSelects() {
@@ -1350,7 +1526,25 @@ function populateSelects() {
     const first = el.options[0]?.outerHTML || '';
     el.innerHTML = first + ASSUNTOS.map(a => `<option value="${a}">${a}</option>`).join('');
   });
+  // cad-assunto change triggers topico update
+  const cadAssunto = document.getElementById('cad-assunto');
+  if (cadAssunto && !cadAssunto._topicoBound) {
+    cadAssunto._topicoBound = true;
+    cadAssunto.addEventListener('change', () => populateTopicosSelect(cadAssunto.value));
+  }
+  if (cadAssunto) populateTopicosSelect(cadAssunto.value);
   populateAISelects();
+}
+
+function populateTopicosSelect(assunto) {
+  const el = document.getElementById('cad-topico');
+  if (!el) return;
+  const topicos = [...new Set(
+    db.questoes.filter(q => q.assunto === assunto && q.topico).map(q => q.topico)
+  )].sort();
+  el.innerHTML = topicos.length
+    ? topicos.map(t => `<option value="${t}">${t}</option>`).join('')
+    : '<option value="">— Sem tópicos cadastrados —</option>';
 }
 
 function populateAISelects() {
@@ -1544,10 +1738,10 @@ function renderQuestaoAtual() {
   `;
 
   document.getElementById('quiz-enunciado').textContent = q.enunciado;
-  document.getElementById('quiz-options').innerHTML = Object.entries(q.opcoes).map(([l, t]) =>
+  document.getElementById('quiz-options').innerHTML = ['A','B','C','D','E'].filter(l => q.opcoes[l]).map(l =>
     `<div class="option-item" id="opt-${l}" onclick="selectOption('${l}')">
       <div class="option-letter">${l}</div>
-      <div class="option-text">${t}</div>
+      <div class="option-text">${q.opcoes[l]}</div>
     </div>`
   ).join('');
 
@@ -1800,11 +1994,11 @@ function renderAIResultados(questoes) {
       <button class="btn btn-primary btn-sm" style="flex-shrink:0" onclick="salvarUmaIA(${i})">💾 Salvar</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
-      ${Object.entries(q.opcoes).map(([l,t]) => `
+      ${['A','B','C','D','E'].filter(l => q.opcoes[l]).map(l => { const t = q.opcoes[l]; return `
         <div style="display:flex;gap:10px;padding:9px 13px;border-radius:8px;${l===q.gabarito?'background:var(--green-light);border:1.5px solid var(--green)':'background:var(--bg);'}">
           <span style="font-family:'Sora',sans-serif;font-size:12.5px;font-weight:700;color:${l===q.gabarito?'var(--green)':'var(--text-mid)'};min-width:18px">${l}</span>
           <span style="font-size:13px;color:var(--text)">${t}</span>
-        </div>`).join('')}
+        </div>`; }).join('')}
     </div>
     ${q.comentario ? `<div style="margin-top:10px;padding:10px 14px;background:var(--blue-light);border-radius:8px;font-size:12.5px;color:var(--blue)">💡 <strong>Gabarito ${q.gabarito}:</strong> ${q.comentario}</div>` : ''}`;
 
@@ -2230,8 +2424,50 @@ document.getElementById('modal-editar-questao').addEventListener('click', functi
 // =============================================
 function openSettings() {
   document.getElementById('modal-settings').classList.add('show');
+  showSettingsTab('materias');
   if (db.settings.apiKey) document.getElementById('settings-api-key').value = db.settings.apiKey;
+  if (db.settings.geminiKey) document.getElementById('settings-gemini-key').value = db.settings.geminiKey;
+  updateSettingsStats();
   renderMateriasList();
+  updateAPIStatus();
+}
+
+function showSettingsTab(tab) {
+  ['materias','integracoes','dados'].forEach(t => {
+    document.getElementById('stab-' + t).classList.toggle('active', t === tab);
+    const c = document.getElementById('stab-content-' + t);
+    if (c) c.style.display = t === tab ? 'block' : 'none';
+  });
+  if (tab === 'materias') { updateSettingsStats(); renderMateriasList(); }
+}
+
+function updateSettingsStats() {
+  const topicosUnicos = new Set(db.questoes.map(q => q.topico).filter(Boolean)).size;
+  const el1 = document.getElementById('stat-materias-count');
+  const el2 = document.getElementById('stat-questoes-count');
+  const el3 = document.getElementById('stat-topicos-count');
+  if (el1) el1.textContent = ASSUNTOS.length;
+  if (el2) el2.textContent = db.questoes.length;
+  if (el3) el3.textContent = topicosUnicos;
+}
+
+function updateAPIStatus() {
+  const antEl = document.getElementById('anthropic-status');
+  const gemEl = document.getElementById('gemini-status');
+  if (antEl) antEl.innerHTML = db.settings.apiKey
+    ? '<span style="color:var(--green)">✓ Chave configurada</span>'
+    : '<span style="color:var(--text-muted)">Não configurada</span>';
+  if (gemEl) gemEl.innerHTML = db.settings.geminiKey
+    ? '<span style="color:var(--green)">✓ Chave configurada</span>'
+    : '<span style="color:var(--text-muted)">Não configurada</span>';
+}
+
+function saveGeminiKey() {
+  const key = document.getElementById('settings-gemini-key').value.trim();
+  db.settings.geminiKey = key;
+  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  updateAPIStatus();
+  toast('Chave Gemini salva!');
 }
 
 function closeSettings() {
@@ -2260,7 +2496,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 
 // Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
 Object.assign(window, {
-  saveMaterias, adicionarMateria, removerMateria, renderMateriasList,
+  saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, toggleMateriaTopicos, renomearTopico, populateTopicosSelect,
   isAdmin, showTab, toast,
   populateSelects, buildOpcoesForm, atualizarTopicosBanco, atualizarTopicosQuiz,
   renderBanco, startQuizFromFilter, renderQuizStart,
@@ -2273,7 +2509,7 @@ Object.assign(window, {
   abrirEditarComentario, salvarComentarioEditado,
   abrirEditarQuestao, fecharEditarQuestao, setEditGabarito, salvarEdicaoQuestao,
   excluirQuestao, apagarPorFonte, apagarTodasQuestoes,
-  openSettings, closeSettings, saveSettings, resetarProgresso,
+  openSettings, closeSettings, saveSettings, saveGeminiKey, showSettingsTab, updateSettingsStats, resetarProgresso,
   genId, getUltimaResposta, updateBadge,
 });
 
