@@ -2000,7 +2000,7 @@ function renderTecQuestao() {
 
   const feedbackHTML = jaRespondida ? `<div class="tec-feedback ${r.correta?'':'wrong'} show">
     <div class="tec-feedback-title">${r.correta ? '✅ Resposta correta!' : `❌ Errou! Gabarito: ${q.gabarito}`}</div>
-    ${q.comentario ? `<div class="tec-feedback-text">${q.comentario}</div>` : ''}
+    ${q.comentario ? `<div class="tec-feedback-text">${renderMd(q.comentario)}</div>` : ''}
     ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}
   </div>` : `<div class="tec-feedback" id="tec-feedback-box">
     ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:0" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}
@@ -2100,7 +2100,7 @@ async function tecResponder() {
   if (fb) {
     fb.className = 'tec-feedback show' + (correta?'':' wrong');
     fb.innerHTML = `<div class="tec-feedback-title">${correta?'✅ Resposta correta!':`❌ Errou! Gabarito: ${q.gabarito}`}</div>
-      ${q.comentario?`<div class="tec-feedback-text">${q.comentario}</div>`:''}
+      ${q.comentario?`<div class="tec-feedback-text">${renderMd(q.comentario)}</div>`:''}
       ${isAdmin()?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>`:''}`;
   }
   // Salva resposta
