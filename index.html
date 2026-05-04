@@ -497,6 +497,48 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 .progress-bar-wrap { background:var(--bg); border-radius:999px; height:7px; overflow:hidden; margin-top:7px; }
 .progress-bar-fill { height:100%; border-radius:999px; background:var(--blue); transition:width .5s ease; }
 
+/* MODO RESOLUCAO TEC */
+.tec-header { background:var(--card); border-bottom:1px solid var(--border); padding:10px 28px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; position:sticky; top:57px; z-index:9; box-shadow:var(--shadow); }
+.tec-progress { font-family:"Sora",sans-serif; font-size:13px; font-weight:700; color:var(--text-mid); }
+.tec-score { display:flex; gap:12px; }
+.tec-score span { font-size:12.5px; font-weight:700; padding:3px 10px; border-radius:999px; }
+.tec-score .acertos { background:var(--green-light); color:var(--green); }
+.tec-score .erros { background:var(--red-light); color:var(--red); }
+.tec-nav { display:flex; gap:4px; align-items:center; }
+.tec-nav-btn { width:34px; height:34px; border:1.5px solid var(--border); border-radius:7px; background:var(--card); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:var(--text-mid); transition:all .15s; }
+.tec-nav-btn:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.tec-nav-btn.fav-active { color:#f59e0b; border-color:#f59e0b; }
+.tec-question-card { max-width:860px; margin:0 auto; padding:22px 28px; }
+.tec-q-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px; }
+.tec-q-code { font-family:"Sora",sans-serif; font-size:12px; font-weight:700; color:var(--text-muted); background:var(--bg); padding:3px 10px; border-radius:6px; }
+.tec-q-share { background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:13px; padding:4px 8px; border-radius:6px; transition:all .15s; }
+.tec-q-share:hover { background:var(--bg); color:var(--blue); }
+.tec-q-body { background:var(--card); border-radius:14px; padding:26px 28px; box-shadow:var(--shadow-md); margin-bottom:14px; }
+.tec-q-enunciado { font-size:15px; line-height:1.8; color:var(--text); margin-bottom:22px; white-space:pre-wrap; }
+.tec-option { display:flex; align-items:flex-start; gap:12px; padding:12px 16px; border:1.5px solid var(--border); border-radius:10px; cursor:pointer; transition:all .15s; margin-bottom:8px; user-select:none; }
+.tec-option:hover:not(.disabled) { border-color:var(--blue); background:var(--blue-light); }
+.tec-option.selected { border-color:var(--blue); background:var(--blue-light); }
+.tec-option.riscada { opacity:.5; }
+.tec-option.riscada .tec-option-text { text-decoration:line-through; }
+.tec-option.correct { border-color:var(--green); background:var(--green-light); }
+.tec-option.wrong { border-color:var(--red); background:var(--red-light); }
+.tec-option.disabled { cursor:default; }
+.tec-option-letter { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:"Sora",sans-serif; font-size:13px; font-weight:700; background:var(--bg); color:var(--text-mid); flex-shrink:0; transition:all .15s; }
+.tec-option.selected .tec-option-letter { background:var(--blue); color:#fff; }
+.tec-option.correct .tec-option-letter { background:var(--green); color:#fff; }
+.tec-option.wrong .tec-option-letter { background:var(--red); color:#fff; }
+.tec-option-text { font-size:13.5px; line-height:1.55; color:var(--text); padding-top:3px; }
+.tec-actions { display:flex; gap:10px; align-items:center; margin-top:4px; }
+.tec-feedback { background:var(--card); border-radius:12px; padding:16px 20px; box-shadow:var(--shadow); margin-top:14px; border-left:4px solid var(--green); display:none; }
+.tec-feedback.show { display:block; }
+.tec-feedback.wrong { border-left-color:var(--red); }
+.tec-feedback-title { font-family:"Sora",sans-serif; font-size:14px; font-weight:700; margin-bottom:6px; }
+.tec-feedback-text { font-size:13px; color:var(--text-mid); line-height:1.6; }
+.btn-resolver { background:var(--green); color:#fff; padding:10px 22px; border-radius:8px; font-size:14px; font-weight:700; border:none; cursor:pointer; transition:all .15s; }
+.btn-resolver:hover { background:#047857; }
+.btn-resolver:disabled { opacity:.4; cursor:not-allowed; }
+.modal-lg { max-width:720px; max-height:85vh; overflow-y:auto; }
+
 /* AUTH SCREEN */
 #auth-screen { position:fixed;inset:0;background:linear-gradient(135deg,#0f1e35,#1d4ed8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px; }
 #bloqueio-screen { position:fixed;inset:0;background:linear-gradient(135deg,#0f1e35,#7c3aed);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px; }
@@ -710,35 +752,50 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 
   <!-- QUIZ -->
   <div class="tab-content" id="tab-quiz">
-    <div class="page-header">
-      <div><h2>✏️ Responder Questões</h2><p id="quiz-subtitle">Selecione uma questão ou use os filtros</p></div>
-      <button class="btn btn-primary btn-sm" onclick="startQuizFromFilter()">▶ Responder Filtro</button>
+    <!-- FILTROS -->
+    <div class="page-header" style="flex-wrap:wrap;gap:10px">
+      <div><h2>✏️ Responder Questões</h2><p id="quiz-subtitle">Use os filtros ou navegue pelas questões</p></div>
     </div>
-    <div class="page-body">
-      <!-- FILTROS ESTILO TEC -->
-      <div class="quiz-container" id="quiz-start-screen">
-        <div class="filters-bar" style="margin-bottom:16px">
-          <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz();renderQuizList()">
-            <option value="">Todas as Matérias</option>
-          </select>
-          <select class="filter-select" id="quiz-filter-topico" onchange="renderQuizList()">
-            <option value="">Todos os Tópicos</option>
-          </select>
-          <select class="filter-select" id="quiz-filter-dif" onchange="renderQuizList()">
-            <option value="">Dificuldade</option>
-            <option value="Fácil">Fácil</option>
-            <option value="Médio">Médio</option>
-            <option value="Difícil">Difícil</option>
-          </select>
-          <select class="filter-select" id="quiz-modo" onchange="renderQuizList()">
-            <option value="todas">Todas</option>
-            <option value="nao_respondida">Não Respondidas</option>
-            <option value="errada">Somente Erradas</option>
-            <option value="correta">Acertadas</option>
-          </select>
-        </div>
+    <div class="filters-bar" style="border-radius:0;margin-bottom:0;border-bottom:1px solid var(--border)">
+      <input class="search-input" id="quiz-search" placeholder="🔍 Buscar questão..." oninput="renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz();renderQuizTec()">
+        <option value="">Todas as Matérias</option>
+      </select>
+      <select class="filter-select" id="quiz-filter-topico" onchange="renderQuizTec()">
+        <option value="">Todos os Tópicos</option>
+      </select>
+      <select class="filter-select" id="quiz-filter-banca" onchange="renderQuizTec()">
+        <option value="">Banca</option>
+      </select>
+      <select class="filter-select" id="quiz-filter-ano" onchange="renderQuizTec()">
+        <option value="">Ano</option>
+      </select>
+      <select class="filter-select" id="quiz-filter-area" onchange="renderQuizTec()">
+        <option value="">Área</option>
+      </select>
+      <select class="filter-select" id="quiz-filter-concurso" onchange="renderQuizTec()">
+        <option value="">Concurso</option>
+      </select>
+      <select class="filter-select" id="quiz-filter-dif" onchange="renderQuizTec()">
+        <option value="">Dificuldade</option>
+        <option value="Fácil">Fácil</option>
+        <option value="Médio">Médio</option>
+        <option value="Difícil">Difícil</option>
+      </select>
+      <select class="filter-select" id="quiz-modo" onchange="renderQuizTec()">
+        <option value="todas">Todas</option>
+        <option value="nao_respondida">Não Respondidas</option>
+        <option value="errada">Somente Erradas</option>
+        <option value="correta">Acertadas</option>
+      </select>
+    </div>
+    <div style="background:var(--card);border-bottom:1px solid var(--border)" id="tec-header-bar" style="display:none">
+      <!-- header de navegação TEC - preenchido por JS -->
+    </div>
+    <div class="page-body" style="padding-top:14px">
+      <div id="quiz-start-screen">
         <p id="quiz-list-count" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></p>
-        <div id="quiz-questions-list" class="questions-list"></div>
+        <div id="quiz-questions-list"></div>
       </div>
       <!-- SESSION -->
       <div class="quiz-container" id="quiz-session" style="display:none">
@@ -813,6 +870,20 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
               <option value="Fácil">Fácil</option>
               <option value="Médio" selected>Médio</option>
               <option value="Difícil">Difícil</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Área</label>
+            <select class="form-select" id="cad-area">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Concurso</label>
+            <select class="form-select" id="cad-concurso">
+              <option value="">Selecione...</option>
             </select>
           </div>
         </div>
@@ -898,8 +969,13 @@ Exemplos:
   <!-- REVISÃO -->
   <div class="tab-content" id="tab-revisao">
     <div class="page-header">
-      <div><h2>⭐ Revisão</h2><p>Questões que você errou — revise e acerte!</p></div>
-      <button class="btn btn-primary btn-sm" onclick="startRevisaoQuiz()">▶ Revisar Todas Erradas</button>
+      <div><h2>⭐ Revisão</h2><p>Questões erradas e favoritas para revisar</p></div>
+      <button class="btn btn-primary btn-sm" onclick="startRevisaoQuiz()">▶ Revisar Erradas</button>
+    </div>
+    <div style="display:flex;gap:0;padding:0 28px;border-bottom:1px solid var(--border);background:var(--card)">
+      <input type="hidden" id="revisao-tab-ativo" value="erradas">
+      <button class="revisao-tab-btn settings-tab active" data-tab="erradas" onclick="mudarAbaRevisao('erradas')">❌ Erradas</button>
+      <button class="revisao-tab-btn settings-tab" data-tab="favoritos" onclick="mudarAbaRevisao('favoritos')">⭐ Favoritas</button>
     </div>
     <div class="page-body">
       <div class="questions-list" id="revisao-list"></div>
@@ -1048,6 +1124,16 @@ Exemplos:
         </select>
       </div>
     </div>
+    <div class="form-row" style="margin-bottom:10px">
+      <div class="form-group">
+        <label>Área</label>
+        <select class="form-select" id="edit-q-area"><option value="">Selecione...</option></select>
+      </div>
+      <div class="form-group">
+        <label>Concurso</label>
+        <select class="form-select" id="edit-q-concurso"><option value="">Selecione...</option></select>
+      </div>
+    </div>
     <div class="form-group" style="margin-bottom:10px">
       <label>Enunciado</label>
       <textarea class="form-textarea" id="edit-q-enunciado" style="min-height:100px"></textarea>
@@ -1162,6 +1248,22 @@ const MATERIAS_DEFAULT = [
   'História do Amapá',
   'Geografia do Amapá',
 ];
+
+const AREAS_DEFAULT = ['Policial', 'Administrativa', 'Judiciária', 'Tributária', 'Saúde', 'Educação'];
+const CONCURSOS_DEFAULT = ['PC-AP 2025', 'PC-AP 2012'];
+let AREAS = JSON.parse(localStorage.getItem('bizuap_areas') || 'null') || [...AREAS_DEFAULT];
+let CONCURSOS = JSON.parse(localStorage.getItem('bizuap_concursos') || 'null') || [...CONCURSOS_DEFAULT];
+
+// Gera código BAP-XXXXX
+function gerarCodigoBAP() {
+  const existentes = db.questoes.map(q => q.codigo).filter(Boolean);
+  let max = 0;
+  existentes.forEach(c => {
+    const n = parseInt(c.replace('BAP-', ''));
+    if (!isNaN(n) && n > max) max = n;
+  });
+  return 'BAP-' + String(max + 1).padStart(5, '0');
+}
 
 const TOPICOS_DEFAULT = {
   'Lei Orgânica PC-AP (0883/2005)': [
@@ -1334,6 +1436,7 @@ let db = {
   respostas: [],
   settings: JSON.parse(localStorage.getItem('pcap_settings') || '{}'),
   topicos: {},
+  favoritos: JSON.parse(localStorage.getItem('pcap_favoritos') || '[]'),
 };
 
 function isAdmin() {
@@ -1577,7 +1680,23 @@ async function init() {
   await carregarQuestoes();
   await carregarRespostas();
   updateBadge();
-  renderInicio();
+  populateSelects();
+  // Verifica se há link direto para questão (#BAP-XXXXX)
+  const hash = location.hash.replace('#','');
+  if (hash && hash.startsWith('BAP-')) {
+    const q = db.questoes.find(q => q.codigo === hash);
+    if (q) {
+      _tecPool = db.questoes.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      _tecIdx = _tecPool.findIndex(x => x.id === q.id);
+      _tecHistory = [_tecIdx >= 0 ? _tecIdx : 0];
+      showTab('quiz');
+      renderTecQuestao();
+    } else {
+      renderInicio();
+    }
+  } else {
+    renderInicio();
+  }
   if (db.settings.apiKey)
     document.getElementById('settings-api-key').value = db.settings.apiKey;
 }
@@ -1595,7 +1714,31 @@ function populateSelects() {
     cadAssunto.addEventListener('change', () => populateTopicosSelect(cadAssunto.value));
   }
   if (cadAssunto) populateTopicosSelect(cadAssunto.value);
+  // Popula Área e Concurso em todos os selects
+  ['cad-area','edit-q-area','quiz-filter-area'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const first = el.options[0]?.outerHTML || '';
+    el.innerHTML = first + AREAS.map(a => `<option value="${a}">${a}</option>`).join('');
+  });
+  ['cad-concurso','edit-q-concurso','quiz-filter-concurso'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const first = el.options[0]?.outerHTML || '';
+    el.innerHTML = first + CONCURSOS.map(c => `<option value="${c}">${c}</option>`).join('');
+  });
+  // Popula filtros dinâmicos de Banca e Ano
+  populateFiltrosDinamicos();
   populateAISelects();
+}
+
+function populateFiltrosDinamicos() {
+  const bancas = [...new Set(db.questoes.map(q=>q.banca).filter(Boolean))].sort();
+  const anos = [...new Set(db.questoes.map(q=>q.ano).filter(Boolean))].sort((a,b)=>b-a);
+  const el_b = document.getElementById('quiz-filter-banca');
+  const el_a = document.getElementById('quiz-filter-ano');
+  if (el_b) el_b.innerHTML = '<option value="">Banca</option>' + bancas.map(b=>`<option value="${b}">${b}</option>`).join('');
+  if (el_a) el_a.innerHTML = '<option value="">Ano</option>' + anos.map(a=>`<option value="${a}">${a}</option>`).join('');
 }
 
 function populateTopicosSelect(assunto) {
@@ -1760,54 +1903,264 @@ function buildPool(ids) {
   return pool;
 }
 
-function renderQuizList() {
+// =============================================
+// MODO RESOLUÇÃO TEC
+// =============================================
+let _tecPool = [];
+let _tecIdx = 0;
+let _tecHistory = [];
+let _tecSelecionado = null; // letra selecionada
+let _tecCliques = {}; // {letra: 0=normal,1=selecionado,2=riscado}
+let _tecAcertos = 0;
+let _tecErros = 0;
+
+function getPoolFiltrado() {
+  const search = (document.getElementById('quiz-search')?.value||'').toLowerCase();
   const assunto = document.getElementById('quiz-filter-assunto')?.value || '';
   const topico = document.getElementById('quiz-filter-topico')?.value || '';
+  const banca = document.getElementById('quiz-filter-banca')?.value || '';
+  const ano = document.getElementById('quiz-filter-ano')?.value || '';
+  const area = document.getElementById('quiz-filter-area')?.value || '';
+  const concurso = document.getElementById('quiz-filter-concurso')?.value || '';
   const dif = document.getElementById('quiz-filter-dif')?.value || '';
   const modo = document.getElementById('quiz-modo')?.value || 'todas';
 
   let pool = [...db.questoes].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+  if (search) pool = pool.filter(q => q.enunciado.toLowerCase().includes(search));
   if (assunto) pool = pool.filter(q => q.assunto === assunto);
   if (topico) pool = pool.filter(q => q.topico === topico);
+  if (banca) pool = pool.filter(q => q.banca === banca);
+  if (ano) pool = pool.filter(q => String(q.ano) === String(ano));
+  if (area) pool = pool.filter(q => q.area === area);
+  if (concurso) pool = pool.filter(q => q.concurso === concurso);
   if (dif) pool = pool.filter(q => q.dificuldade === dif);
   if (modo === 'nao_respondida') pool = pool.filter(q => !getUltimaResposta(q.id));
   if (modo === 'errada') pool = pool.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
   if (modo === 'correta') pool = pool.filter(q => { const r=getUltimaResposta(q.id); return r&&r.correta; });
+  return pool;
+}
 
-  const el = document.getElementById('quiz-questions-list');
+function renderQuizTec() {
+  _tecPool = getPoolFiltrado();
+  _tecIdx = 0;
+  _tecHistory = [];
+  _tecAcertos = 0;
+  _tecErros = 0;
   const count = document.getElementById('quiz-list-count');
-  if (count) count.textContent = `${pool.length} questão(ões) encontrada(s)`;
-
-  if (!pool.length) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><h3>Nenhuma questão encontrada</h3><p>Tente outros filtros.</p></div>';
+  if (count) count.textContent = `${_tecPool.length} questão(ões) encontrada(s)`;
+  if (!_tecPool.length) {
+    document.getElementById('quiz-questions-list').innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><h3>Nenhuma questão encontrada</h3><p>Tente outros filtros.</p></div>';
     return;
   }
+  renderTecQuestao();
+}
 
-  el.innerHTML = pool.map((q, i) => {
-    const r = getUltimaResposta(q.id);
-    const status = r ? (r.correta ? '✅' : '❌') : '⬜';
-    const difTag = q.dificuldade === 'Fácil' ? 'tag-green' : q.dificuldade === 'Difícil' ? 'tag-red' : 'tag-amber';
-    return `<div class="question-item" onclick="iniciarQuizDaQuestao('${q.id}', ${i}, ${JSON.stringify(pool.map(x=>x.id)).replace(/"/g,"'")})">
-      <span class="q-number">${status}</span>
-      <div class="q-content">
-        <p class="q-enunciado">${q.enunciado.slice(0,120)}${q.enunciado.length>120?'…':''}</p>
-        <div class="q-tags">
-          <span class="tag tag-blue">${q.assunto.split('(')[0].trim()}</span>
-          ${q.topico ? `<span class="tag tag-gray">${q.topico}</span>` : ''}
-          <span class="tag ${difTag}">${q.dificuldade}</span>
-          ${q.banca ? `<span class="tag tag-gray">${q.banca}${q.ano?' '+q.ano:''}</span>` : ''}
-        </div>
-      </div>
+// Alias para compatibilidade
+function renderQuizList() { renderQuizTec(); }
+
+function renderTecQuestao() {
+  const q = _tecPool[_tecIdx];
+  if (!q) return;
+  _tecCliques = {};
+  _tecSelecionado = null;
+  const r = getUltimaResposta(q.id);
+  const jaRespondida = !!r;
+  const letras = ['A','B','C','D','E'];
+  const difTag = q.dificuldade === 'Fácil' ? 'var(--green)' : q.dificuldade === 'Difícil' ? 'var(--red)' : 'var(--amber)';
+  const fav = (db.favoritos||[]).includes(q.id);
+  const acertosTotal = db.respostas.filter(r=>r.correta).length;
+  const errosTotal = db.respostas.filter(r=>!r.correta).length;
+  const codigo = q.codigo || q.id;
+  const link = `${location.origin}${location.pathname}#${codigo}`;
+
+  const opcoesHTML = (q.opcoes||[]).map((op, idx) => {
+    const letra = letras[idx];
+    let cls = 'tec-option';
+    if (jaRespondida) {
+      cls += ' disabled';
+      if (letra === q.gabarito) cls += ' correct';
+      else if (letra === r.resposta) cls += ' wrong';
+    }
+    return `<div class="${cls}" id="tec-opt-${letra}" onclick="tecClicarOpcao('${letra}')">
+      <div class="tec-option-letter">${letra}</div>
+      <div class="tec-option-text">${op}</div>
     </div>`;
   }).join('');
+
+  const feedbackHTML = jaRespondida ? `<div class="tec-feedback ${r.correta?'':'wrong'} show">
+    <div class="tec-feedback-title">${r.correta ? '✅ Resposta correta!' : `❌ Errou! Gabarito: ${q.gabarito}`}</div>
+    ${q.comentario ? `<div class="tec-feedback-text">${q.comentario}</div>` : ''}
+    ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}
+  </div>` : `<div class="tec-feedback" id="tec-feedback-box">
+    ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:0" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}
+  </div>`;
+
+  const html = `
+    <div class="tec-header">
+      <div style="display:flex;align-items:center;gap:16px">
+        <span class="tec-progress">Questão ${_tecIdx+1} de ${_tecPool.length}</span>
+        <div class="tec-score">
+          <span class="acertos">✅ ${acertosTotal}</span>
+          <span class="erros">❌ ${errosTotal}</span>
+        </div>
+      </div>
+      <div class="tec-nav">
+        <button class="tec-nav-btn" onclick="tecNav('prev')" title="Anterior">←</button>
+        <button class="tec-nav-btn" onclick="tecNav('next')" title="Próxima">→</button>
+        <button class="tec-nav-btn" onclick="tecNav('random')" title="Aleatória não resolvida">⇄</button>
+        <button class="tec-nav-btn" onclick="tecNav('nextPending')" title="Próxima não resolvida">⇄✕</button>
+        <button class="tec-nav-btn" onclick="tecNav('prevTopic')" title="Tópico anterior">◄</button>
+        <button class="tec-nav-btn" onclick="tecNav('nextTopic')" title="Próximo tópico">►</button>
+        <button class="tec-nav-btn" onclick="tecNav('undo')" title="Desfazer navegação">↺</button>
+        <button class="tec-nav-btn ${fav?'fav-active':''}" onclick="tecFavoritar('${q.id}')" title="Favoritar">★</button>
+      </div>
+    </div>
+    <div class="tec-question-card">
+      <div class="tec-q-header">
+        <div class="q-tags">
+          <span class="tag tag-blue">${q.assunto.split('(')[0].trim()}</span>
+          ${q.topico?`<span class="tag tag-gray">${q.topico}</span>`:''}
+          <span class="tag" style="background:${difTag}22;color:${difTag}">${q.dificuldade}</span>
+          ${q.banca?`<span class="tag tag-gray">${q.banca}${q.ano?' '+q.ano:''}</span>`:''}
+          ${q.area?`<span class="tag tag-gray">${q.area}</span>`:''}
+          ${q.concurso?`<span class="tag tag-gray">${q.concurso}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="tec-q-code">#${codigo}</span>
+          <button class="tec-q-share" onclick="tecCompartilhar('${link}','${codigo}')" title="Compartilhar">🔗</button>
+        </div>
+      </div>
+      <div class="tec-q-body">
+        <p class="tec-q-enunciado">${q.enunciado}</p>
+        <div id="tec-opcoes">${opcoesHTML}</div>
+        ${!jaRespondida ? `<div class="tec-actions">
+          <button class="btn-resolver" id="btn-resolver" onclick="tecResponder()" disabled>Resolver Questão</button>
+        </div>` : ''}
+      </div>
+      ${feedbackHTML}
+    </div>`;
+
+  document.getElementById('quiz-questions-list').innerHTML = html;
+}
+
+function tecClicarOpcao(letra) {
+  const btn = document.getElementById('btn-resolver');
+  if (!btn) return; // já respondida
+  const atual = _tecCliques[letra] || 0;
+  // Limpa seleção anterior se clicar em outra letra
+  if (_tecSelecionado && _tecSelecionado !== letra) {
+    if (_tecCliques[_tecSelecionado] === 1) {
+      _tecCliques[_tecSelecionado] = 0;
+      const elAnterior = document.getElementById('tec-opt-' + _tecSelecionado);
+      if (elAnterior) { elAnterior.classList.remove('selected'); }
+    }
+  }
+  const proximo = atual === 0 ? 1 : atual === 1 ? 2 : 0;
+  _tecCliques[letra] = proximo;
+  const el = document.getElementById('tec-opt-' + letra);
+  if (!el) return;
+  el.classList.remove('selected','riscada');
+  if (proximo === 1) { el.classList.add('selected'); _tecSelecionado = letra; }
+  else if (proximo === 2) { el.classList.add('riscada'); if (_tecSelecionado === letra) _tecSelecionado = null; }
+  else { if (_tecSelecionado === letra) _tecSelecionado = null; }
+  if (btn) btn.disabled = !_tecSelecionado;
+}
+
+async function tecResponder() {
+  if (!_tecSelecionado) return;
+  const q = _tecPool[_tecIdx];
+  const correta = _tecSelecionado === q.gabarito;
+  // Atualiza visual
+  const letras = ['A','B','C','D','E'];
+  (q.opcoes||[]).forEach((_, idx) => {
+    const letra = letras[idx];
+    const el = document.getElementById('tec-opt-' + letra);
+    if (!el) return;
+    el.classList.remove('selected','riscada');
+    el.classList.add('disabled');
+    if (letra === q.gabarito) el.classList.add('correct');
+    else if (letra === _tecSelecionado) el.classList.add('wrong');
+    el.onclick = null;
+  });
+  // Remove botão resolver
+  const actions = document.querySelector('.tec-actions');
+  if (actions) actions.remove();
+  // Mostra feedback
+  const fb = document.getElementById('tec-feedback-box');
+  if (fb) {
+    fb.className = 'tec-feedback show' + (correta?'':' wrong');
+    fb.innerHTML = `<div class="tec-feedback-title">${correta?'✅ Resposta correta!':`❌ Errou! Gabarito: ${q.gabarito}`}</div>
+      ${q.comentario?`<div class="tec-feedback-text">${q.comentario}</div>`:''}
+      ${isAdmin()?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>`:''}`;
+  }
+  // Salva resposta
+  const resposta = { id: genId(), questionId: q.id, resposta: _tecSelecionado, correta, timestamp: Date.now() };
+  await salvarRespostaFirestore(resposta);
+  if (correta) _tecAcertos++; else _tecErros++;
+  // Atualiza score no header
+  const acertosTotal = db.respostas.filter(r=>r.correta).length;
+  const errosTotal = db.respostas.filter(r=>!r.correta).length;
+  const scoreEl = document.querySelector('.tec-score');
+  if (scoreEl) scoreEl.innerHTML = `<span class="acertos">✅ ${acertosTotal}</span><span class="erros">❌ ${errosTotal}</span>`;
+}
+
+function tecNav(tipo) {
+  const q = _tecPool[_tecIdx];
+  _tecHistory.push(_tecIdx);
+  if (tipo === 'prev') { if (_tecIdx > 0) _tecIdx--; else { toast('Primeira questão!','info'); _tecHistory.pop(); return; } }
+  else if (tipo === 'next') { if (_tecIdx < _tecPool.length-1) _tecIdx++; else { toast('Última questão!','info'); _tecHistory.pop(); return; } }
+  else if (tipo === 'random') {
+    const pending = _tecPool.map((q,i)=>({q,i})).filter(({q})=>!getUltimaResposta(q.id));
+    if (!pending.length) { toast('Todas respondidas!','info'); _tecHistory.pop(); return; }
+    _tecIdx = pending[Math.floor(Math.random()*pending.length)].i;
+  }
+  else if (tipo === 'nextPending') {
+    let found = false;
+    for (let i=_tecIdx+1;i<_tecPool.length;i++) { if (!getUltimaResposta(_tecPool[i].id)) { _tecIdx=i; found=true; break; } }
+    if (!found) { toast('Não há mais pendentes!','info'); _tecHistory.pop(); return; }
+  }
+  else if (tipo === 'prevTopic') {
+    const topicoAtual = q?.topico || '';
+    let found = false;
+    for (let i=_tecIdx-1;i>=0;i--) { if (_tecPool[i].topico !== topicoAtual) { _tecIdx=i; found=true; break; } }
+    if (!found) { toast('Primeiro tópico!','info'); _tecHistory.pop(); return; }
+  }
+  else if (tipo === 'nextTopic') {
+    const topicoAtual = q?.topico || '';
+    let found = false;
+    for (let i=_tecIdx+1;i<_tecPool.length;i++) { if (_tecPool[i].topico !== topicoAtual) { _tecIdx=i; found=true; break; } }
+    if (!found) { toast('Último tópico!','info'); _tecHistory.pop(); return; }
+  }
+  else if (tipo === 'undo') {
+    if (_tecHistory.length > 1) { _tecHistory.pop(); _tecIdx = _tecHistory.pop(); }
+    else { toast('Sem histórico!','info'); return; }
+  }
+  renderTecQuestao();
+}
+
+function tecFavoritar(qid) {
+  if (!db.favoritos) db.favoritos = [];
+  if (db.favoritos.includes(qid)) db.favoritos = db.favoritos.filter(f=>f!==qid);
+  else db.favoritos.push(qid);
+  localStorage.setItem('pcap_favoritos', JSON.stringify(db.favoritos));
+  renderTecQuestao();
+  toast(db.favoritos.includes(qid) ? '⭐ Favoritado!' : 'Removido dos favoritos', 'info');
+}
+
+function tecCompartilhar(link, codigo) {
+  if (navigator.share) {
+    navigator.share({ title: `BizuAP — Questão ${codigo}`, url: link });
+  } else {
+    navigator.clipboard.writeText(link).then(() => toast('🔗 Link copiado!', 'success'));
+  }
 }
 
 function iniciarQuizDaQuestao(id, idx, ids) {
-  const pool = ids.map(i => db.questoes.find(q => q.id === i)).filter(Boolean);
-  const from = pool.slice(idx);
-  if (!from.length) return;
-  document.getElementById('quiz-start-screen').style.display = 'none';
-  iniciarSessao(from);
+  _tecPool = ids.map(i => db.questoes.find(q => q.id === i)).filter(Boolean);
+  _tecIdx = idx;
+  _tecHistory = [idx];
+  _tecAcertos = 0; _tecErros = 0;
+  renderTecQuestao();
 }
 
 window.verQuestoesBanco = function(assunto, topico) {
@@ -1988,6 +2341,7 @@ async function salvarQuestaoManual() {
 
   const q = {
     id: genId(),
+    codigo: gerarCodigoBAP(),
     enunciado,
     opcoes,
     gabarito: gabaritoAtual,
@@ -1996,6 +2350,8 @@ async function salvarQuestaoManual() {
     banca: document.getElementById('cad-banca').value.trim(),
     ano: document.getElementById('cad-ano').value ? parseInt(document.getElementById('cad-ano').value) : null,
     dificuldade: document.getElementById('cad-dificuldade').value,
+    area: document.getElementById('cad-area').value.trim(),
+    concurso: document.getElementById('cad-concurso').value.trim(),
     comentario: document.getElementById('cad-comentario').value.trim(),
     fonte: 'manual',
     createdAt: Date.now(),
@@ -2353,37 +2709,69 @@ function renderStats() {
 // REVISÃO
 // =============================================
 function renderRevisao() {
-  const erradas = db.questoes.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
+  const tab = document.getElementById('revisao-tab-ativo')?.value || 'erradas';
   const el = document.getElementById('revisao-list');
-  if (!erradas.length) {
+  let questoes = [];
+  if (tab === 'erradas') {
+    questoes = db.questoes.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
+  } else {
+    questoes = db.questoes.filter(q => (db.favoritos||[]).includes(q.id));
+  }
+  if (!questoes.length) {
     el.innerHTML = `<div class="empty-state">
-      <div class="empty-icon">🎉</div>
-      <h3>Nenhuma questão para revisar!</h3>
-      <p>Você acertou tudo ou ainda não respondeu questões.</p>
+      <div class="empty-icon">${tab==='erradas'?'🎉':'⭐'}</div>
+      <h3>${tab==='erradas'?'Nenhuma questão para revisar!':'Nenhuma questão favoritada!'}</h3>
+      <p>${tab==='erradas'?'Você acertou tudo ou ainda não respondeu questões.':'Favorite questões com ★ para acessá-las aqui.'}</p>
     </div>`;
     return;
   }
-  el.innerHTML = erradas.map((q,i) => {
+  el.innerHTML = questoes.map((q,i) => {
     const r = getUltimaResposta(q.id);
-    return `<div class="question-item" onclick="abrirQuestaoSozinha('${q.id}')">
+    const fav = (db.favoritos||[]).includes(q.id);
+    return `<div class="question-item" onclick="abrirRevisaoTec('${q.id}')">
       <span class="q-number">#${i+1}</span>
       <div class="q-content">
-        <p class="q-enunciado">${q.enunciado}</p>
+        <p class="q-enunciado">${q.enunciado.slice(0,120)}${q.enunciado.length>120?'…':''}</p>
         <div class="q-tags">
           <span class="tag tag-blue">${q.assunto.split('(')[0].trim()}</span>
-          <span class="tag tag-red">✗ Respondeu ${r.resposta} · Gabarito ${q.gabarito}</span>
+          ${q.topico?`<span class="tag tag-gray">${q.topico}</span>`:''}
+          ${r?`<span class="tag tag-red">✗ Respondeu ${r.resposta} · Gabarito ${q.gabarito}</span>`:''}
+          ${fav?'<span class="tag" style="background:#fef3c7;color:#d97706">⭐ Favorito</span>':''}
         </div>
       </div>
-      <div class="q-status errada"></div>
     </div>`;
   }).join('');
+}
+
+function mudarAbaRevisao(aba) {
+  document.getElementById('revisao-tab-ativo').value = aba;
+  document.querySelectorAll('.revisao-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === aba));
+  renderRevisao();
+}
+
+function abrirRevisaoTec(id) {
+  const tab = document.getElementById('revisao-tab-ativo')?.value || 'erradas';
+  let pool = [];
+  if (tab === 'erradas') pool = db.questoes.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
+  else pool = db.questoes.filter(q => (db.favoritos||[]).includes(q.id));
+  const idx = pool.findIndex(q => q.id === id);
+  _tecPool = pool;
+  _tecIdx = idx >= 0 ? idx : 0;
+  _tecHistory = [_tecIdx];
+  _tecAcertos = 0; _tecErros = 0;
+  showTab('quiz');
+  renderTecQuestao();
 }
 
 function startRevisaoQuiz() {
   const erradas = db.questoes.filter(q => { const r=getUltimaResposta(q.id); return r&&!r.correta; });
   if (!erradas.length) { toast('Nenhuma questão errada!', 'info'); return; }
+  _tecPool = erradas.sort(() => Math.random() - 0.5);
+  _tecIdx = 0;
+  _tecHistory = [0];
+  _tecAcertos = 0; _tecErros = 0;
   showTab('quiz');
-  iniciarSessao(erradas.sort(() => Math.random() - 0.5));
+  renderTecQuestao();
 }
 
 // =============================================
@@ -2530,6 +2918,7 @@ async function confirmarImport() {
   for (const q of novas) {
     const obj = {
       id: genId(),
+      codigo: gerarCodigoBAP(),
       enunciado: q.enunciado,
       opcoes: q.opcoes,
       gabarito: q.gabarito,
@@ -2538,6 +2927,8 @@ async function confirmarImport() {
       banca: q.banca || '',
       ano: q.ano || null,
       dificuldade: q.dificuldade || 'Médio',
+      area: q.area || '',
+      concurso: q.concurso || '',
       comentario: q.comentario || '',
       fonte: 'importado',
       createdAt: Date.now(),
@@ -2588,6 +2979,11 @@ function abrirEditarQuestao(id) {
   document.getElementById('edit-q-ano').value = q.ano || '';
   document.getElementById('edit-q-comentario').value = q.comentario || '';
   document.getElementById('edit-q-dificuldade').value = q.dificuldade || 'Médio';
+  // Área e Concurso
+  const selArea = document.getElementById('edit-q-area');
+  if (selArea) { selArea.innerHTML = '<option value="">Selecione...</option>' + AREAS.map(a=>`<option value="${a}" ${a===q.area?'selected':''}>${a}</option>`).join(''); }
+  const selConcurso = document.getElementById('edit-q-concurso');
+  if (selConcurso) { selConcurso.innerHTML = '<option value="">Selecione...</option>' + CONCURSOS.map(c=>`<option value="${c}" ${c===q.concurso?'selected':''}>${c}</option>`).join(''); }
   const sel = document.getElementById('edit-q-assunto');
   sel.innerHTML = ASSUNTOS.map(a => `<option value="${a}" ${a===q.assunto?'selected':''}>${a}</option>`).join('');
   document.getElementById('edit-opcoes-form').innerHTML = ['A','B','C','D','E'].map(l =>
@@ -2631,6 +3027,8 @@ async function salvarEdicaoQuestao() {
     banca: document.getElementById('edit-q-banca').value.trim(),
     ano: document.getElementById('edit-q-ano').value ? parseInt(document.getElementById('edit-q-ano').value) : null,
     dificuldade: document.getElementById('edit-q-dificuldade').value,
+    area: document.getElementById('edit-q-area').value.trim(),
+    concurso: document.getElementById('edit-q-concurso').value.trim(),
     comentario: document.getElementById('edit-q-comentario').value.trim(),
   };
   await updateDoc(doc(db_fire, 'questoes', id), updates);
@@ -2638,6 +3036,8 @@ async function salvarEdicaoQuestao() {
   if (idx !== -1) db.questoes[idx] = { ...db.questoes[idx], ...updates };
   fecharEditarQuestao();
   renderBanco();
+  // Atualiza TEC se estiver na aba quiz
+  if (document.getElementById('tab-quiz').classList.contains('active')) renderTecQuestao();
   toast('Questão atualizada!');
 }
 
