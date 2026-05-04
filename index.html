@@ -397,7 +397,7 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 .questions-list { display:flex; flex-direction:column; gap:8px; }
 .question-item { background:var(--card); border-radius:10px; padding:15px 18px; box-shadow:var(--shadow); display:flex; align-items:flex-start; gap:14px; cursor:pointer; transition:all .15s; border:1.5px solid transparent; }
 .question-item:hover { border-color:var(--blue); transform:translateY(-1px); box-shadow:var(--shadow-md); }
-.q-number { font-family:'Sora',sans-serif; font-size:12px; font-weight:700; color:var(--text-muted); width:30px; flex-shrink:0; margin-top:2px; }
+.q-number { font-family:'Sora',sans-serif; font-size:12px; font-weight:700; color:var(--text-muted); min-width:52px; flex-shrink:0; margin-top:2px; margin-right:6px; }
 .q-content { flex:1; min-width:0; }
 .q-enunciado { font-size:13.5px; color:var(--text); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .q-tags { display:flex; gap:6px; margin-top:7px; flex-wrap:wrap; }
@@ -720,25 +720,27 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     </div>
     <div class="page-body">
       <div class="filters-bar">
-        <input class="search-input" id="search-banco" placeholder="🔍 Buscar questão..." oninput="renderBanco()">
-        <select class="filter-select" id="filter-assunto" onchange="atualizarTopicosBanco(); renderBanco()">
+        <input class="search-input" id="search-banco" placeholder="🔍 Buscar questão..." onkeydown="if(event.key==='Enter')renderBanco()">
+        <select class="filter-select" id="filter-assunto" onchange="atualizarTopicosBanco()">
           <option value="">Todas as Matérias</option>
         </select>
-        <select class="filter-select" id="filter-topico" onchange="renderBanco()">
+        <select class="filter-select" id="filter-topico">
           <option value="">Todos os Tópicos</option>
         </select>
-        <select class="filter-select" id="filter-dificuldade" onchange="renderBanco()">
+        <select class="filter-select" id="filter-dificuldade">
           <option value="">Dificuldade</option>
           <option value="Fácil">Fácil</option>
           <option value="Médio">Médio</option>
           <option value="Difícil">Difícil</option>
         </select>
-        <select class="filter-select" id="filter-status" onchange="renderBanco()">
+        <select class="filter-select" id="filter-status">
           <option value="">Todos os Status</option>
           <option value="nao_respondida">Não Respondidas</option>
           <option value="correta">Acertadas</option>
           <option value="errada">Erradas</option>
         </select>
+        <button class="btn btn-primary btn-sm" onclick="renderBanco()" style="white-space:nowrap">🔍 Filtrar</button>
+        <button class="btn btn-ghost btn-sm" onclick="limparFiltrosBanco()" style="white-space:nowrap">✕ Limpar</button>
       </div>
       <div class="questions-list" id="banco-list">
         <div class="empty-state">
@@ -1050,7 +1052,17 @@ Exemplos:
           <div class="form-group"><label>Quantidade</label><select class="form-select" id="codigo-qtd"><option value="1">1 código</option><option value="5">5 códigos</option><option value="10">10 códigos</option></select></div>
           <div class="form-group"><label>Código expira em</label><select class="form-select" id="codigo-expira"><option value="0">Sem expiração</option><option value="7">7 dias</option><option value="15">15 dias</option><option value="30">30 dias</option></select></div>
         </div>
-        <button class="btn btn-primary" onclick="gerarCodigo()">⚡ Gerar Código(s)</button>
+        <div style="margin-top:12px;padding:12px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+          <p style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">📧 Enviar código por email (opcional)</p>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" id="codigo-email-aluno" placeholder="email do aluno..." style="flex:1;font-size:13px">
+            <input class="form-input" id="codigo-nome-aluno" placeholder="nome do aluno..." style="flex:1;font-size:13px">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <button class="btn btn-primary" onclick="gerarCodigo()">⚡ Gerar Código(s)</button>
+          <button class="btn btn-primary" onclick="gerarEEnviar()" style="background:#059669">⚡📧 Gerar e Enviar</button>
+        </div>
         <div id="codigo-result" style="display:none;margin-top:14px"><div id="codigos-gerados-list" style="display:flex;flex-direction:column;gap:8px"></div></div>
       </div>
       <div class="form-section" style="margin-bottom:14px">
@@ -1059,6 +1071,17 @@ Exemplos:
           <button class="btn btn-ghost btn-sm" onclick="carregarCodigos()">🔄 Atualizar</button>
         </div>
         <div id="admin-codigos-list"><p style="color:var(--text-muted);font-size:13px">Clique em Atualizar para carregar.</p></div>
+      </div>
+      <div class="form-section" style="margin-bottom:14px">
+        <h3>📢 Enviar Email para Todos os Alunos</h3>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input class="form-input" id="email-massa-assunto" placeholder="Assunto do email..." style="font-size:13px">
+          <textarea class="form-textarea" id="email-massa-corpo" placeholder="Mensagem para os alunos..." style="min-height:80px;font-size:13px"></textarea>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary btn-sm" onclick="enviarEmailMassa()">📢 Enviar para todos</button>
+            <span id="email-massa-status" style="font-size:12px;color:var(--text-muted);align-self:center"></span>
+          </div>
+        </div>
       </div>
       <div class="form-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1108,6 +1131,20 @@ Exemplos:
             <button class="btn btn-primary btn-sm" onclick="saveGeminiKey()">Salvar</button>
           </div>
           <div id="gemini-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:18px;margin-top:18px">
+          <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Brevo <span style="font-size:11px;background:#ecfdf5;color:#059669;padding:2px 6px;border-radius:6px;margin-left:4px">Email</span></p>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.5">Para envio de emails automáticos aos alunos. Obtenha em <strong>brevo.com → SMTP & API → API Keys</strong></p>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input class="form-input" type="password" id="settings-brevo-key" placeholder="xsmtpsib-..." style="flex:1">
+            <button class="btn btn-primary btn-sm" onclick="saveBrevoKey()">Salvar</button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" id="settings-brevo-email" placeholder="noreply@papirotatico.com.br" style="flex:1">
+            <input class="form-input" id="settings-brevo-nome" placeholder="Papiro Tático" style="flex:2">
+            <button class="btn btn-ghost btn-sm" onclick="saveBrevoSender()">Salvar remetente</button>
+          </div>
+          <div id="brevo-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>
         </div>
       </div>
       <div id="stab-content-dados" style="display:none">
@@ -1779,6 +1816,16 @@ function getTopicos(assunto) {
   return topicos;
 }
 
+function limparFiltrosBanco() {
+  document.getElementById('search-banco').value = '';
+  document.getElementById('filter-assunto').value = '';
+  document.getElementById('filter-topico').value = '';
+  document.getElementById('filter-dificuldade').value = '';
+  document.getElementById('filter-status').value = '';
+  atualizarTopicosBanco();
+  renderBanco();
+}
+
 function atualizarTopicosBanco() {
   const assunto = document.getElementById('filter-assunto').value;
   const el = document.getElementById('filter-topico');
@@ -1857,6 +1904,12 @@ async function init() {
   }
   if (db.settings.apiKey)
     document.getElementById('settings-api-key').value = db.settings.apiKey;
+  if (db.settings.brevoKey)
+    document.getElementById('settings-brevo-key').value = db.settings.brevoKey;
+  if (db.settings.brevoEmail)
+    document.getElementById('settings-brevo-email').value = db.settings.brevoEmail;
+  if (db.settings.brevoNome)
+    document.getElementById('settings-brevo-nome').value = db.settings.brevoNome;
 }
 
 function populateSelects() {
@@ -1959,7 +2012,7 @@ function renderBanco() {
     if (assunto && q.assunto !== assunto) return false;
     if (topico && q.topico !== topico) return false;
     if (dif && q.dificuldade !== dif) return false;
-    if (search && !q.enunciado.toLowerCase().includes(search)) return false;
+    if (search && !q.enunciado.toLowerCase().includes(search) && !(q.codigo||"").toLowerCase().includes(search)) return false;
     if (status) {
       const r = getUltimaResposta(q.id);
       if (status === 'nao_respondida' && r) return false;
@@ -2017,7 +2070,7 @@ function startQuizFromFilter() {
     return db.questoes.filter(q => {
       if (assunto && q.assunto !== assunto) return false;
       if (dif && q.dificuldade !== dif) return false;
-      if (search && !q.enunciado.toLowerCase().includes(search)) return false;
+      if (search && !q.enunciado.toLowerCase().includes(search) && !(q.codigo||"").toLowerCase().includes(search)) return false;
       return true;
     }).map(q => q.id);
   })();
@@ -2084,7 +2137,7 @@ function getPoolFiltrado() {
   const modo = document.getElementById('quiz-modo')?.value || 'todas';
 
   let pool = [...db.questoes].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
-  if (search) pool = pool.filter(q => q.enunciado.toLowerCase().includes(search));
+  if (search) pool = pool.filter(q => q.enunciado.toLowerCase().includes(search) || (q.codigo||"").toLowerCase().includes(search));
   if (assunto) pool = pool.filter(q => q.assunto === assunto);
   if (topico) pool = pool.filter(q => q.topico === topico);
   if (banca) pool = pool.filter(q => q.banca === banca);
@@ -3349,6 +3402,124 @@ function saveSettings() {
   toast('Configurações salvas!');
 }
 
+function saveBrevoKey() {
+  const key = document.getElementById('settings-brevo-key').value.trim();
+  db.settings.brevoKey = key;
+  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  document.getElementById('brevo-status').textContent = key ? '✅ Chave Brevo salva!' : 'Chave removida.';
+  toast(key ? 'Chave Brevo salva!' : 'Chave Brevo removida.');
+}
+
+function saveBrevoSender() {
+  db.settings.brevoEmail = document.getElementById('settings-brevo-email').value.trim();
+  db.settings.brevoNome = document.getElementById('settings-brevo-nome').value.trim();
+  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  toast('Remetente salvo!');
+}
+
+function emailTemplate(nomeAluno, codigo, diasAcesso) {
+  const link = 'https://papirotatico.com.br';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:30px 10px">
+  <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+    <tr><td style="background:#1a2744;padding:32px;text-align:center">
+      <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:2px">🎖 PAPIRO TÁTICO</div>
+      <div style="font-size:12px;color:#8fa8d8;letter-spacing:3px;margin-top:6px">ESTUDE COM ESTRATÉGIA</div>
+    </td></tr>
+    <tr><td style="padding:12px 32px;text-align:center;background:#f0f7ff">
+      <span style="display:inline-block;padding:6px 16px;border-radius:999px;border:1.5px solid #059669;color:#059669;font-size:12px;font-weight:700;letter-spacing:1px">● ACESSO LIBERADO · ATIVO</span>
+    </td></tr>
+    <tr><td style="padding:32px">
+      <h2 style="margin:0 0 12px;font-size:22px;color:#1a2744">Missão iniciada, ${nomeAluno}!</h2>
+      <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6">Seu acesso ao <strong>Papiro Tático</strong> foi liberado com sucesso. Use o código abaixo para ativar sua conta e começar a estudar.</p>
+      <div style="background:#f8f9ff;border:2px solid #e0e7ff;border-radius:10px;padding:24px;text-align:center;margin-bottom:24px">
+        <div style="font-size:11px;font-weight:700;color:#6366f1;letter-spacing:2px;margin-bottom:8px">SEU CÓDIGO DE ATIVAÇÃO</div>
+        <div style="font-size:36px;font-weight:900;color:#1a2744;letter-spacing:8px">${codigo}</div>
+        <div style="font-size:12px;color:#888;margin-top:8px">⏱ Válido por ${diasAcesso} dias · Use apenas uma vez</div>
+      </div>
+      <div style="text-align:center">
+        <a href="${link}" style="display:inline-block;background:#1a2744;color:#fff;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;text-decoration:none">Ir para ativação →</a>
+      </div>
+    </td></tr>
+    <tr><td style="padding:20px 32px;border-top:1px solid #eee;text-align:center">
+      <p style="margin:0;font-size:11px;color:#aaa">Papiro Tático · papirotatico.com.br<br>Este email foi enviado automaticamente. Não responda este email.</p>
+    </td></tr>
+  </table></td></tr></table></body></html>`;
+}
+
+async function enviarEmailBrevo(para, nomeDestinatario, assunto, htmlContent) {
+  const key = db.settings.brevoKey;
+  if (!key) { toast('Configure a chave Brevo nas Configurações → Integrações!', 'error'); return false; }
+  const remetente = db.settings.brevoEmail || 'noreply@papirotatico.com.br';
+  const nomeRemetente = db.settings.brevoNome || 'Papiro Tático';
+  try {
+    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'api-key': key },
+      body: JSON.stringify({
+        sender: { name: nomeRemetente, email: remetente },
+        to: [{ email: para, name: nomeDestinatario }],
+        subject: assunto,
+        htmlContent
+      })
+    });
+    return resp.ok;
+  } catch(e) { console.error(e); return false; }
+}
+
+async function gerarEEnviar() {
+  const emailAluno = document.getElementById('codigo-email-aluno').value.trim();
+  const nomeAluno = document.getElementById('codigo-nome-aluno').value.trim() || 'Aluno';
+  if (!emailAluno) { toast('Digite o email do aluno!', 'error'); return; }
+  if (!db.settings.brevoKey) { toast('Configure a chave Brevo nas Configurações!', 'error'); return; }
+  await gerarCodigo();
+  // Pega o último código gerado
+  await new Promise(r => setTimeout(r, 500));
+  const ultimos = db.codigos.filter(c => !c.usado).slice(-1);
+  if (!ultimos.length) { toast('Erro ao gerar código!', 'error'); return; }
+  const cod = ultimos[0];
+  const dias = document.getElementById('codigo-dias').value;
+  const html = emailTemplate(nomeAluno, cod.codigo, dias);
+  toast('Enviando email...', 'info');
+  const ok = await enviarEmailBrevo(emailAluno, nomeAluno, '🎖 Seu acesso ao Papiro Tático foi liberado!', html);
+  toast(ok ? `Email enviado para ${emailAluno}! ✅` : 'Erro ao enviar email. Verifique a chave Brevo.', ok ? 'success' : 'error');
+}
+
+async function enviarEmailMassa() {
+  const assunto = document.getElementById('email-massa-assunto').value.trim();
+  const corpo = document.getElementById('email-massa-corpo').value.trim();
+  const statusEl = document.getElementById('email-massa-status');
+  if (!assunto || !corpo) { toast('Preencha assunto e mensagem!', 'error'); return; }
+  if (!db.settings.brevoKey) { toast('Configure a chave Brevo nas Configurações!', 'error'); return; }
+  if (!confirm(`Enviar email para TODOS os alunos cadastrados?\n\nAssunto: ${assunto}`)) return;
+  const usuarios = db.usuarios || [];
+  if (!usuarios.length) { toast('Nenhum aluno cadastrado!', 'error'); return; }
+  statusEl.textContent = `Enviando para ${usuarios.length} alunos...`;
+  let enviados = 0;
+  const nomeRemetente = db.settings.brevoNome || 'Papiro Tático';
+  const remetente = db.settings.brevoEmail || 'noreply@papirotatico.com.br';
+  const htmlCorpo = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+    <div style="background:#1a2744;padding:20px;border-radius:8px 8px 0 0;text-align:center">
+      <div style="font-size:22px;font-weight:900;color:#fff">🎖 PAPIRO TÁTICO</div>
+    </div>
+    <div style="background:#fff;padding:24px;border:1px solid #eee;border-radius:0 0 8px 8px">
+      <h2 style="color:#1a2744">${assunto}</h2>
+      <div style="font-size:14px;color:#555;line-height:1.7">${corpo.replace(/\n/g,'<br>')}</div>
+      <hr style="margin:20px 0;border:none;border-top:1px solid #eee">
+      <p style="font-size:11px;color:#aaa;text-align:center">Papiro Tático · papirotatico.com.br</p>
+    </div>
+  </body></html>`;
+  for (const u of usuarios) {
+    if (!u.email) continue;
+    const ok = await enviarEmailBrevo(u.email, u.nome || 'Aluno', assunto, htmlCorpo);
+    if (ok) enviados++;
+    statusEl.textContent = `Enviando... ${enviados}/${usuarios.length}`;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  statusEl.textContent = `✅ Enviado para ${enviados}/${usuarios.length} alunos`;
+  toast(`Email enviado para ${enviados} alunos!`, 'success');
+}
+
 function resetarProgresso() {
   if (!confirm('Tem certeza? Isso apagará apenas suas RESPOSTAS (não as questões).')) return;
   db.respostas = [];
@@ -3365,6 +3536,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 // Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
 Object.assign(window, {
   // Matérias & Tópicos
+  saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
