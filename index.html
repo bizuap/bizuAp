@@ -655,8 +655,18 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <h1>⚖️ BizuAP</h1>
-    <p>Banco de Questões</p>
+    <h1>🎖 Papiro Tático</h1>
+    <p>Questões</p>
+  </div>
+  <div class="sidebar-user" id="sidebar-user" style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:none">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">👤</div>
+      <div style="min-width:0">
+        <div id="sidebar-user-nome" style="font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        <div id="sidebar-user-email" style="font-size:10.5px;color:rgba(255,255,255,0.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      </div>
+    </div>
+    <div id="sidebar-user-validade" style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:6px;padding-left:41px"></div>
   </div>
   <div class="sidebar-nav">
     <div class="nav-section-label">Principal</div>
@@ -1941,6 +1951,7 @@ async function init() {
     document.getElementById('settings-brevo-email').value = db.settings.brevoEmail;
   if (db.settings.brevoNome)
     document.getElementById('settings-brevo-nome').value = db.settings.brevoNome;
+  atualizarSidebarUser();
 }
 
 function populateSelects() {
@@ -2865,6 +2876,25 @@ async function salvarUmaIA(i) {
 // =============================================
 // INÍCIO
 // =============================================
+function atualizarSidebarUser() {
+  const u = db.user;
+  if (!u) return;
+  const el = document.getElementById('sidebar-user');
+  const nomeEl = document.getElementById('sidebar-user-nome');
+  const emailEl = document.getElementById('sidebar-user-email');
+  const validEl = document.getElementById('sidebar-user-validade');
+  if (!el) return;
+  el.style.display = 'block';
+  if (nomeEl) nomeEl.textContent = u.nome || u.email || '';
+  if (emailEl) emailEl.textContent = u.email || '';
+  if (validEl && u.validade) {
+    const val = u.validade?.toDate ? u.validade.toDate() : new Date(u.validade);
+    const agora = new Date();
+    const dias = Math.ceil((val - agora) / (1000*60*60*24));
+    validEl.textContent = dias > 0 ? `✅ Acesso por mais ${dias} dias` : '❌ Acesso vencido';
+  }
+}
+
 function renderInicio() {
   const total = db.questoes.length;
   const respondidas = [...new Set(db.respostas.map(r => r.questionId))].length;
@@ -3567,7 +3597,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 // Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
 Object.assign(window, {
   // Matérias & Tópicos
-  saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa,
+  saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
