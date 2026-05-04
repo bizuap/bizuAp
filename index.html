@@ -276,7 +276,7 @@ window.copiarCodigo = function() {
   toast('Código copiado!');
 };
 
-async function gerarCodigoRetornando() {
+window.gerarCodigoRetornando = async function() {
   const dias = parseInt(document.getElementById('codigo-dias').value || '30');
   const plano = document.getElementById('codigo-plano').value || 'mensal';
   const expiraDias = parseInt(document.getElementById('codigo-expira')?.value || '0');
@@ -3503,8 +3503,11 @@ async function gerarEEnviar() {
   const nomeAluno = document.getElementById('codigo-nome-aluno').value.trim() || 'Aluno';
   if (!emailAluno) { toast('Digite o email do aluno!', 'error'); return; }
   if (!db.settings.brevoKey) { toast('Configure a chave Brevo nas Configurações!', 'error'); return; }
-  // Gera o código e captura o valor
-  const codigoGerado = await gerarCodigoRetornando();
+  await window.gerarCodigo();
+  // Captura o código gerado pelo DOM
+  await new Promise(r => setTimeout(r, 300));
+  const codigoEl = document.querySelector('#codigos-gerados-list code');
+  const codigoGerado = codigoEl ? codigoEl.textContent.trim() : null;
   if (!codigoGerado) { toast('Erro ao gerar código!', 'error'); return; }
   const dias = document.getElementById('codigo-dias').value;
   const html = emailTemplate(nomeAluno, codigoGerado, dias);
@@ -3564,7 +3567,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 // Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
 Object.assign(window, {
   // Matérias & Tópicos
-  saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, gerarCodigoRetornando,
+  saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
