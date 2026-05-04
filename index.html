@@ -1445,9 +1445,20 @@ function isAdmin() {
 
 // Carrega questões do Firestore
 async function carregarQuestoes() {
-  const { db_fire, collection, getDocs, query, orderBy } = window._fire;
+  const { db_fire, collection, getDocs } = window._fire;
   const snap = await getDocs(collection(db_fire, 'questoes'));
-  db.questoes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  db.questoes = snap.docs.map(d => {
+    const data = d.data();
+    // Normaliza opcoes: se vier como array, converte para objeto {A,B,C,D,E}
+    // (o restante do código usa formato objeto)
+    if (Array.isArray(data.opcoes)) {
+      const letras = ['A','B','C','D','E'];
+      const obj = {};
+      data.opcoes.forEach((v, i) => { if (letras[i]) obj[letras[i]] = v; });
+      data.opcoes = obj;
+    }
+    return { id: d.id, ...data };
+  });
   updateBadge();
 }
 
@@ -1973,8 +1984,8 @@ function renderTecQuestao() {
   const codigo = q.codigo || q.id;
   const link = `${location.origin}${location.pathname}#${codigo}`;
 
-  const opcoesHTML = (q.opcoes||[]).map((op, idx) => {
-    const letra = letras[idx];
+  const opcoesHTML = letras.filter(l => q.opcoes && q.opcoes[l]).map(letra => {
+    const op = q.opcoes[letra];
     let cls = 'tec-option';
     if (jaRespondida) {
       cls += ' disabled';
@@ -2072,8 +2083,7 @@ async function tecResponder() {
   const correta = _tecSelecionado === q.gabarito;
   // Atualiza visual
   const letras = ['A','B','C','D','E'];
-  (q.opcoes||[]).forEach((_, idx) => {
-    const letra = letras[idx];
+  letras.filter(l => q.opcoes && q.opcoes[l]).forEach(letra => {
     const el = document.getElementById('tec-opt-' + letra);
     if (!el) return;
     el.classList.remove('selected','riscada');
@@ -2914,13 +2924,21 @@ async function confirmarImport() {
   localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
 
   // Salva as questões
+  const letrasMap = ['A','B','C','D','E'];
   let saved = 0;
   for (const q of novas) {
+    // Normaliza opcoes para formato objeto {A,B,C,D,E}
+    let opcoes = q.opcoes;
+    if (Array.isArray(opcoes)) {
+      const obj = {};
+      opcoes.forEach((v, i) => { if (letrasMap[i]) obj[letrasMap[i]] = v; });
+      opcoes = obj;
+    }
     const obj = {
       id: genId(),
       codigo: gerarCodigoBAP(),
       enunciado: q.enunciado,
-      opcoes: q.opcoes,
+      opcoes,
       gabarito: q.gabarito,
       assunto: q.materia || q.assunto || ASSUNTOS[0],
       topico: q.topico || '',
@@ -3202,9 +3220,9 @@ function renderMd(text) {
 }
 
 // =============================================
-// START
+// START — init() é chamado apenas pelo onAuthStateChanged
+// para garantir que window._fire e o usuário estejam prontos
 // =============================================
-init();
 </script>
 </body>
 </html>
