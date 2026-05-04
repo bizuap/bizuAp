@@ -1321,7 +1321,7 @@ const CONCURSOS_DEFAULT = ['PC-AP 2025', 'PC-AP 2012'];
 let AREAS = JSON.parse(localStorage.getItem('bizuap_areas') || 'null') || [...AREAS_DEFAULT];
 let CONCURSOS = JSON.parse(localStorage.getItem('bizuap_concursos') || 'null') || [...CONCURSOS_DEFAULT];
 
-// Gera código BAP-XXXXX
+// Gera código Q00001
 function gerarCodigoBAP() {
   const existentes = db.questoes.map(q => q.codigo).filter(Boolean);
   let max = 0;
@@ -1841,7 +1841,7 @@ async function init() {
   populateSelects();
   // Verifica se há link direto para questão (#BAP-XXXXX)
   const hash = location.hash.replace('#','');
-  if (hash && hash.startsWith('BAP-')) {
+  if (hash && (hash.startsWith('BAP-') || hash.startsWith('Q'))) {
     const q = db.questoes.find(q => q.codigo === hash);
     if (q) {
       _tecPool = db.questoes.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
@@ -1989,7 +1989,7 @@ function renderBanco() {
     const difTag = q.dificuldade === 'Fácil' ? 'tag-green' : q.dificuldade === 'Difícil' ? 'tag-red' : 'tag-amber';
     const assuntoShort = q.assunto.split('(')[0].trim();
     return `<div class="question-item" onclick="abrirQuestaoSozinha('${q.id}')">
-      <span class="q-number">#${i+1}</span>
+      <span class="q-number">${q.codigo || '#'+(i+1)}</span>
       <div class="q-content">
         <p class="q-enunciado">${q.enunciado}</p>
         <div class="q-tags">
@@ -2171,16 +2171,6 @@ function renderTecQuestao() {
           <span class="erros">❌ ${errosTotal}</span>
         </div>
       </div>
-      <div class="tec-nav">
-        <button class="tec-nav-btn" onclick="tecNav('prev')" title="Anterior">←</button>
-        <button class="tec-nav-btn" onclick="tecNav('next')" title="Próxima">→</button>
-        <button class="tec-nav-btn" onclick="tecNav('random')" title="Aleatória não resolvida">⇄</button>
-        <button class="tec-nav-btn" onclick="tecNav('nextPending')" title="Próxima não resolvida">⇄✕</button>
-        <button class="tec-nav-btn" onclick="tecNav('prevTopic')" title="Tópico anterior">◄</button>
-        <button class="tec-nav-btn" onclick="tecNav('nextTopic')" title="Próximo tópico">►</button>
-        <button class="tec-nav-btn" onclick="tecNav('undo')" title="Desfazer navegação">↺</button>
-        <button class="tec-nav-btn ${fav?'fav-active':''}" onclick="tecFavoritar('${q.id}')" title="Favoritar">★</button>
-      </div>
     </div>
     <div class="tec-question-card">
       <div class="tec-q-header">
@@ -2203,6 +2193,16 @@ function renderTecQuestao() {
         ${!jaRespondida ? `<div class="tec-actions">
           <button class="btn-resolver" id="btn-resolver" onclick="tecResponder()" disabled>Resolver Questão</button>
         </div>` : ''}
+        <div class="tec-nav" style="margin-top:16px;justify-content:center;border-top:1px solid var(--border);padding-top:14px">
+          <button class="tec-nav-btn" onclick="tecNav('prev')" title="Anterior">←</button>
+          <button class="tec-nav-btn" onclick="tecNav('next')" title="Próxima">→</button>
+          <button class="tec-nav-btn" onclick="tecNav('random')" title="Aleatória não resolvida">⇄</button>
+          <button class="tec-nav-btn" onclick="tecNav('nextPending')" title="Próxima não resolvida">⇄✕</button>
+          <button class="tec-nav-btn" onclick="tecNav('prevTopic')" title="Tópico anterior">◄</button>
+          <button class="tec-nav-btn" onclick="tecNav('nextTopic')" title="Próximo tópico">►</button>
+          <button class="tec-nav-btn" onclick="tecNav('undo')" title="Desfazer navegação">↺</button>
+          <button class="tec-nav-btn ${fav?'fav-active':''}" onclick="tecFavoritar('${q.id}')" title="Favoritar">★</button>
+        </div>
       </div>
       ${feedbackHTML}
     </div>`;
@@ -2930,7 +2930,7 @@ function renderRevisao() {
     const r = getUltimaResposta(q.id);
     const fav = (db.favoritos||[]).includes(q.id);
     return `<div class="question-item" onclick="abrirRevisaoTec('${q.id}')">
-      <span class="q-number">#${i+1}</span>
+      <span class="q-number">${q.codigo || '#'+(i+1)}</span>
       <div class="q-content">
         <p class="q-enunciado">${q.enunciado.slice(0,120)}${q.enunciado.length>120?'…':''}</p>
         <div class="q-tags">
