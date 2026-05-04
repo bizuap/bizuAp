@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BizuAP — Banco de Questões</title>
+<title>Papiro Tático — Questões</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎖</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Nunito+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script type="module">
 // =============================================
@@ -28,7 +29,7 @@ const db_fire = getFirestore(app);
 
 // Admin email
 const ADMIN_EMAIL = "bizuap.app@gmail.com";
-const DEVICE_KEY = 'bizuap_device_' + (Math.random().toString(36).slice(2,10));
+const DEVICE_KEY = 'pt_device_' + (Math.random().toString(36).slice(2,10));
 
 // Expõe funções globais para os onclick do HTML
 window._fire = { auth, db_fire, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, orderBy, serverTimestamp, deleteDoc };
@@ -607,8 +608,8 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 <div id="auth-screen">
   <div class="auth-box">
     <div class="auth-logo">
-      <h1>⚖️ BizuAP</h1>
-      <p>Banco de Questões para Concursos do Amapá</p>
+      <h1>🎖 Papiro Tático</h1>
+      <p>Estude com Estratégia</p>
     </div>
     <div class="auth-tabs">
       <div class="auth-tab active" data-tab="login" onclick="showAuthTab('login')">Entrar</div>
@@ -1152,7 +1153,7 @@ Exemplos:
           <button class="btn btn-primary" onclick="adicionarMateria(document.getElementById('nova-materia').value);document.getElementById('nova-materia').value=''">+ Adicionar matéria</button>
         </div>
         <div id="materias-list"></div>
-        <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];localStorage.setItem('pcap_materias',JSON.stringify(ASSUNTOS));populateSelects();renderMateriasList();toast('Matérias restauradas!','info')" style="margin-top:10px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
+        <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];localStorage.setItem('pt_materias',JSON.stringify(ASSUNTOS));populateSelects();renderMateriasList();toast('Matérias restauradas!','info')" style="margin-top:10px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
       </div>
       <div id="stab-content-integracoes" style="display:none">
         <div style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px">
@@ -1330,7 +1331,7 @@ Exemplos:
         <button class="btn btn-primary btn-sm" onclick="adicionarMateria(document.getElementById('nova-materia').value);document.getElementById('nova-materia').value=''">+ Adicionar</button>
       </div>
       <div id="materias-list" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 12px"></div>
-      <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];localStorage.setItem('pcap_materias',JSON.stringify(ASSUNTOS));populateSelects();renderMateriasList();toast('Matérias restauradas!','info')" style="margin-top:8px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
+      <button onclick="ASSUNTOS=[...MATERIAS_DEFAULT];localStorage.setItem('pt_materias',JSON.stringify(ASSUNTOS));populateSelects();renderMateriasList();toast('Matérias restauradas!','info')" style="margin-top:8px;background:none;border:none;font-size:12px;color:var(--text-muted);cursor:pointer;text-decoration:underline">↩ Restaurar padrões</button>
     </div>
     <div id="stab-content-integracoes" style="display:none;flex:1;overflow-y:auto;padding:18px 20px">
       <div style="border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:18px">
@@ -1396,8 +1397,8 @@ const MATERIAS_DEFAULT = [
 
 const AREAS_DEFAULT = ['Policial', 'Administrativa', 'Judiciária', 'Tributária', 'Saúde', 'Educação'];
 const CONCURSOS_DEFAULT = ['PC-AP 2025', 'PC-AP 2012'];
-let AREAS = JSON.parse(localStorage.getItem('bizuap_areas') || 'null') || [...AREAS_DEFAULT];
-let CONCURSOS = JSON.parse(localStorage.getItem('bizuap_concursos') || 'null') || [...CONCURSOS_DEFAULT];
+let AREAS = JSON.parse(localStorage.getItem('pt_areas') || 'null') || [...AREAS_DEFAULT];
+let CONCURSOS = JSON.parse(localStorage.getItem('pt_concursos') || 'null') || [...CONCURSOS_DEFAULT];
 
 // Gera código Q00001
 function gerarCodigoBAP() {
@@ -1500,10 +1501,10 @@ const TOPICOS_DEFAULT = {
   ],
 };
 
-let ASSUNTOS = JSON.parse(localStorage.getItem('pcap_materias') || 'null') || [...MATERIAS_DEFAULT];
+let ASSUNTOS = JSON.parse(localStorage.getItem('pt_materias') || 'null') || [...MATERIAS_DEFAULT];
 
 function saveMaterias() {
-  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+  localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
 }
 
 async function adicionarMateria(nome) {
@@ -1512,7 +1513,7 @@ async function adicionarMateria(nome) {
   if (ASSUNTOS.includes(nome)) { toast('Matéria já existe!', 'error'); return; }
   ASSUNTOS.push(nome);
   ASSUNTOS.sort();
-  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+  localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
   await salvarMateriaFirestore(nome);
   populateSelects();
   renderMateriasList();
@@ -1526,7 +1527,7 @@ async function renomearMateria(nomeAntigo) {
   if (ASSUNTOS.includes(novo)) { toast('Já existe uma matéria com esse nome!', 'error'); return; }
   // Atualiza localmente
   ASSUNTOS = ASSUNTOS.map(a => a === nomeAntigo ? novo : a);
-  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+  localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
   // Atualiza questões vinculadas localmente
   db.questoes.forEach(q => { if (q.assunto === nomeAntigo) q.assunto = novo; });
   await renomearMateriaFirestore(nomeAntigo, novo);
@@ -1542,7 +1543,7 @@ async function removerMateria(nome) {
     : `Remover a matéria "${nome}"?`;
   if (!confirm(msg)) return;
   ASSUNTOS = ASSUNTOS.filter(a => a !== nome);
-  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+  localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
   await removerMateriaFirestore(nome);
   populateSelects();
   renderMateriasList();
@@ -1631,7 +1632,7 @@ function moverTopico(assunto, topico, dir) {
   const novo = idx + dir;
   if (novo < 0 || novo >= arr.length) return;
   [arr[idx], arr[novo]] = [arr[novo], arr[idx]];
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
   if (isAdmin() && window._fire) {
     const { db_fire, doc, setDoc } = window._fire;
     arr.forEach((t, i) => setDoc(doc(db_fire, 'topicos', materiaId(assunto)+'__'+materiaId(t)), { assunto, topico: t, ordem: i }));
@@ -1658,9 +1659,9 @@ function toggleMateriaTopicos(cid, chid, forceOpen) {
 let db = {
   questoes: [],
   respostas: [],
-  settings: JSON.parse(localStorage.getItem('pcap_settings') || '{}'),
+  settings: JSON.parse(localStorage.getItem('pt_settings') || '{}'),
   topicos: {},
-  favoritos: JSON.parse(localStorage.getItem('pcap_favoritos') || '[]'),
+  favoritos: JSON.parse(localStorage.getItem('pt_favoritos') || '[]'),
 };
 
 function isAdmin() {
@@ -1702,14 +1703,14 @@ async function carregarMaterias() {
     const snap = await getDocs(collection(db_fire, 'materias'));
     if (!snap.empty) {
       ASSUNTOS = snap.docs.map(d => d.data().nome).filter(Boolean).sort();
-      localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+      localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
     } else {
-      const cached = JSON.parse(localStorage.getItem('pcap_materias') || 'null');
+      const cached = JSON.parse(localStorage.getItem('pt_materias') || 'null');
       if (cached && cached.length) ASSUNTOS = cached;
       else ASSUNTOS = [...MATERIAS_DEFAULT];
     }
   } catch(e) {
-    const cached = JSON.parse(localStorage.getItem('pcap_materias') || 'null');
+    const cached = JSON.parse(localStorage.getItem('pt_materias') || 'null');
     if (cached && cached.length) ASSUNTOS = cached;
     else ASSUNTOS = [...MATERIAS_DEFAULT];
   }
@@ -1730,9 +1731,9 @@ async function carregarTopicos() {
       if (!db.topicos[data.assunto].includes(data.topico)) db.topicos[data.assunto].push(data.topico);
     });
     Object.keys(db.topicos).forEach(a => db.topicos[a]);
-    localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+    localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
   } catch(e) {
-    const cached = JSON.parse(localStorage.getItem('pcap_topicos') || 'null');
+    const cached = JSON.parse(localStorage.getItem('pt_topicos') || 'null');
     if (cached) db.topicos = cached;
     else db.topicos = { ...TOPICOS_DEFAULT };
   }
@@ -1744,7 +1745,7 @@ async function carregarTopicos() {
     }
     db.topicos[materia];
   }
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
 }
 
 async function adicionarTopico(assunto, topico) {
@@ -1754,7 +1755,7 @@ async function adicionarTopico(assunto, topico) {
   if (db.topicos[assunto].includes(topico)) { toast('Tópico já existe!', 'error'); return; }
   db.topicos[assunto].push(topico);
   db.topicos[assunto];
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
   if (isAdmin() && window._fire) {
     const { db_fire, doc, setDoc } = window._fire;
     await setDoc(doc(db_fire, 'topicos', materiaId(assunto) + '__' + materiaId(topico)), { assunto, topico });
@@ -1767,7 +1768,7 @@ async function adicionarTopico(assunto, topico) {
 async function removerTopico(assunto, topico) {
   if (!confirm(`Remover tópico "${topico}"?`)) return;
   if (db.topicos[assunto]) db.topicos[assunto] = db.topicos[assunto].filter(t => t !== topico);
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
   if (isAdmin() && window._fire) {
     const { db_fire, doc, deleteDoc } = window._fire;
     await deleteDoc(doc(db_fire, 'topicos', materiaId(assunto) + '__' + materiaId(topico)));
@@ -1782,7 +1783,7 @@ async function renomearTopico(assunto, topicoAntigo) {
   const novoTrimmed = novo.trim();
   if (db.topicos[assunto]) db.topicos[assunto] = db.topicos[assunto].map(t => t === topicoAntigo ? novoTrimmed : t);
   db.questoes.forEach(q => { if (q.assunto === assunto && q.topico === topicoAntigo) q.topico = novoTrimmed; });
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
   renderMateriasList();
   toast('Tópico renomeado!');
 }
@@ -1844,7 +1845,7 @@ async function atualizarComentarioFirestore(qid, comentario) {
 
 // Mantém compatibilidade — saveDB agora salva só settings
 function saveDB() {
-  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  localStorage.setItem('pt_settings', JSON.stringify(db.settings));
 }
 
 function genId() {
@@ -2438,14 +2439,14 @@ function tecFavoritar(qid) {
   if (!db.favoritos) db.favoritos = [];
   if (db.favoritos.includes(qid)) db.favoritos = db.favoritos.filter(f=>f!==qid);
   else db.favoritos.push(qid);
-  localStorage.setItem('pcap_favoritos', JSON.stringify(db.favoritos));
+  localStorage.setItem('pt_favoritos', JSON.stringify(db.favoritos));
   renderTecQuestao();
   toast(db.favoritos.includes(qid) ? '⭐ Favoritado!' : 'Removido dos favoritos', 'info');
 }
 
 function tecCompartilhar(link, codigo) {
   if (navigator.share) {
-    navigator.share({ title: `BizuAP — Questão ${codigo}`, url: link });
+    navigator.share({ title: `Papiro Tático — Questão ${codigo}`, url: link });
   } else {
     navigator.clipboard.writeText(link).then(() => toast('🔗 Link copiado!', 'success'));
   }
@@ -3212,7 +3213,7 @@ async function confirmarImport() {
     }
   }
   ASSUNTOS = [...new Set(ASSUNTOS)].sort();
-  localStorage.setItem('pcap_materias', JSON.stringify(ASSUNTOS));
+  localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
 
   // Registra tópicos novos no Firestore
   const snapTopicos = await getDocs(collection(db_fire, 'topicos'));
@@ -3226,7 +3227,7 @@ async function confirmarImport() {
     }
   }
   Object.keys(db.topicos).forEach(a => db.topicos[a]);
-  localStorage.setItem('pcap_topicos', JSON.stringify(db.topicos));
+  localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
 
   // Salva as questões
   const letrasMap = ['A','B','C','D','E'];
@@ -3447,7 +3448,7 @@ function updateAPIStatus() {
 function saveGeminiKey() {
   const key = document.getElementById('settings-gemini-key').value.trim();
   db.settings.geminiKey = key;
-  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  localStorage.setItem('pt_settings', JSON.stringify(db.settings));
   updateAPIStatus();
   toast(key ? 'Chave Gemini salva! Será usada como padrão.' : 'Chave Gemini removida.');
 }
@@ -3458,7 +3459,7 @@ function closeSettings() {
 
 function saveSettings() {
   db.settings.apiKey = document.getElementById('settings-api-key').value.trim();
-  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  localStorage.setItem('pt_settings', JSON.stringify(db.settings));
   closeSettings();
   toast('Configurações salvas!');
 }
@@ -3466,7 +3467,7 @@ function saveSettings() {
 function saveBrevoKey() {
   const key = document.getElementById('settings-brevo-key').value.trim();
   db.settings.brevoKey = key;
-  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  localStorage.setItem('pt_settings', JSON.stringify(db.settings));
   document.getElementById('brevo-status').textContent = key ? '✅ Chave Brevo salva!' : 'Chave removida.';
   toast(key ? 'Chave Brevo salva!' : 'Chave Brevo removida.');
 }
@@ -3474,7 +3475,7 @@ function saveBrevoKey() {
 function saveBrevoSender() {
   db.settings.brevoEmail = document.getElementById('settings-brevo-email').value.trim();
   db.settings.brevoNome = document.getElementById('settings-brevo-nome').value.trim();
-  localStorage.setItem('pcap_settings', JSON.stringify(db.settings));
+  localStorage.setItem('pt_settings', JSON.stringify(db.settings));
   toast('Remetente salvo!');
 }
 
