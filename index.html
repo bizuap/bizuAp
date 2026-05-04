@@ -201,6 +201,8 @@ window.filtrarAlunos = function(busca) {
 
 window.renderAlunos = function(alunos) {
   const lista = document.getElementById('admin-usuarios-list');
+  const countEl = document.getElementById('admin-alunos-count');
+  if (countEl) countEl.textContent = `(${alunos.length})`;
   if (!alunos.length) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum aluno encontrado.</p>'; return; }
   const agora = new Date();
   const em7 = new Date(agora.getTime() + 7*24*60*60*1000);
@@ -274,6 +276,27 @@ window.copiarCodigo = function() {
   toast('Código copiado!');
 };
 
+async function gerarCodigoRetornando() {
+  const dias = parseInt(document.getElementById('codigo-dias').value || '30');
+  const plano = document.getElementById('codigo-plano').value || 'mensal';
+  const expiraDias = parseInt(document.getElementById('codigo-expira')?.value || '0');
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let codigo = '';
+  for (let i=0; i<8; i++) { if(i===4) codigo+='-'; codigo += chars[Math.floor(Math.random()*chars.length)]; }
+  const validade = new Date(); validade.setDate(validade.getDate() + dias);
+  const dados = { usado: false, validade, plano, criadoEm: serverTimestamp(), diasAcesso: dias };
+  if (expiraDias > 0) { const exp = new Date(); exp.setDate(exp.getDate() + expiraDias); dados.expiraCodigo = exp; }
+  await setDoc(doc(db_fire, 'codigos', codigo), dados);
+  const lista = document.getElementById('codigos-gerados-list');
+  if (lista) lista.innerHTML = `<div style="display:flex;align-items:center;gap:12px;background:var(--blue-light);border-radius:10px;padding:12px 16px">
+    <code style="font-size:20px;font-weight:800;letter-spacing:3px;color:var(--blue);flex:1">${codigo}</code>
+    <button class="btn btn-primary btn-sm" onclick="navigator.clipboard.writeText('${codigo}');toast('Copiado!')">📋 Copiar</button>
+  </div>`;
+  document.getElementById('codigo-result').style.display = 'block';
+  carregarCodigos();
+  return codigo;
+}
+
 window.carregarCodigos = async function() {
   const lista = document.getElementById('admin-codigos-list');
   lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Carregando...</p>';
@@ -281,25 +304,33 @@ window.carregarCodigos = async function() {
   if (snap.empty) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum código.</p>'; return; }
   const agora = new Date();
   const docs = snap.docs;
-  const disp = docs.filter(d => !d.data().usado).length;
-  const usados = docs.filter(d => d.data().usado).length;
+  const dispDocs = docs.filter(d => !d.data().usado);
+  const usadosDocs = docs.filter(d => d.data().usado);
   const elD = document.getElementById('admin-stat-codigos-disp');
   const elU = document.getElementById('admin-stat-codigos-usados');
-  if (elD) elD.textContent = disp;
-  if (elU) elU.textContent = usados;
-  lista.innerHTML = docs.map(d => {
+  if (elD) elD.textContent = dispDocs.length;
+  if (elU) elU.textContent = usadosDocs.length;
+  function renderCodigo(d) {
     const c = d.data();
     const val = c.validade?.toDate ? c.validade.toDate() : new Date(c.validade);
     const expira = c.expiraCodigo?.toDate ? c.expiraCodigo.toDate() : c.expiraCodigo ? new Date(c.expiraCodigo) : null;
     const expirado = expira && expira < agora && !c.usado;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <code style="font-size:15px;font-weight:700;letter-spacing:2px;color:${expirado?'var(--text-muted)':'var(--blue)'};flex:1;${expirado?'text-decoration:line-through':''}">${d.id}</code>
+    const opacity = c.usado ? 'opacity:.55' : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;${opacity}">
+      <code style="font-size:15px;font-weight:700;letter-spacing:2px;color:${c.usado?'var(--text-muted)':expirado?'var(--text-muted)':'var(--blue)'};flex:1;${expirado||c.usado?'text-decoration:line-through':''}">${d.id}</code>
       <span class="tag ${c.usado?'tag-red':expirado?'tag-gray':'tag-green'}">${c.usado?'✗ Usado por '+c.usadoPor:expirado?'Expirado':'✓ Disponível'}</span>
       <span class="tag tag-gray">${c.diasAcesso} dias · acesso até ${val.toLocaleDateString('pt-BR')}</span>
       ${expira&&!c.usado?`<span class="tag tag-amber">Cód. expira ${expira.toLocaleDateString('pt-BR')}</span>`:''}
       ${!c.usado?`<button class="btn btn-danger btn-sm" onclick="deletarCodigo('${d.id}')">🗑</button>`:''}
     </div>`;
-  }).join('');
+  }
+  lista.innerHTML = `
+    <div style="font-size:12px;font-weight:700;color:var(--green);letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase">✅ Disponíveis (${dispDocs.length})</div>
+    ${dispDocs.length ? dispDocs.map(renderCodigo).join('') : '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Nenhum código disponível.</p>'}
+    <div style="border-top:1.5px solid var(--border);margin:14px 0 10px"></div>
+    <div style="font-size:12px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;margin-bottom:4px;text-transform:uppercase">✖ Usados (${usadosDocs.length})</div>
+    ${usadosDocs.length ? usadosDocs.map(renderCodigo).join('') : '<p style="color:var(--text-muted);font-size:13px;padding:8px 0">Nenhum código usado.</p>'}
+  `;
 };
 
 window.deletarCodigo = async function(codigo) {
@@ -1085,7 +1116,7 @@ Exemplos:
       </div>
       <div class="form-section">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <h3 style="margin:0;border:none;padding:0">👥 Alunos Cadastrados</h3>
+          <h3 style="margin:0;border:none;padding:0">👥 Alunos Cadastrados <span id="admin-alunos-count" style="font-size:13px;font-weight:400;color:var(--text-muted)"></span></h3>
           <div style="display:flex;gap:8px;align-items:center">
             <input class="form-input" id="busca-aluno" placeholder="Buscar por nome ou email..." style="width:220px;font-size:13px;padding:6px 10px" oninput="filtrarAlunos(this.value)">
             <button class="btn btn-ghost btn-sm" onclick="carregarAdmin()">🔄 Atualizar</button>
@@ -3472,14 +3503,11 @@ async function gerarEEnviar() {
   const nomeAluno = document.getElementById('codigo-nome-aluno').value.trim() || 'Aluno';
   if (!emailAluno) { toast('Digite o email do aluno!', 'error'); return; }
   if (!db.settings.brevoKey) { toast('Configure a chave Brevo nas Configurações!', 'error'); return; }
-  await gerarCodigo();
-  // Pega o último código gerado
-  await new Promise(r => setTimeout(r, 500));
-  const ultimos = db.codigos.filter(c => !c.usado).slice(-1);
-  if (!ultimos.length) { toast('Erro ao gerar código!', 'error'); return; }
-  const cod = ultimos[0];
+  // Gera o código e captura o valor
+  const codigoGerado = await gerarCodigoRetornando();
+  if (!codigoGerado) { toast('Erro ao gerar código!', 'error'); return; }
   const dias = document.getElementById('codigo-dias').value;
-  const html = emailTemplate(nomeAluno, cod.codigo, dias);
+  const html = emailTemplate(nomeAluno, codigoGerado, dias);
   toast('Enviando email...', 'info');
   const ok = await enviarEmailBrevo(emailAluno, nomeAluno, '🎖 Seu acesso ao Papiro Tático foi liberado!', html);
   toast(ok ? `Email enviado para ${emailAluno}! ✅` : 'Erro ao enviar email. Verifique a chave Brevo.', ok ? 'success' : 'error');
