@@ -1959,7 +1959,7 @@ function renderBanco() {
     if (assunto && q.assunto !== assunto) return false;
     if (topico && q.topico !== topico) return false;
     if (dif && q.dificuldade !== dif) return false;
-    if (search && !q.enunciado.toLowerCase().includes(search)) return false;
+    if (search && !q.enunciado.toLowerCase().includes(search) && !(q.codigo||"").toLowerCase().includes(search)) return false;
     if (status) {
       const r = getUltimaResposta(q.id);
       if (status === 'nao_respondida' && r) return false;
@@ -2017,7 +2017,7 @@ function startQuizFromFilter() {
     return db.questoes.filter(q => {
       if (assunto && q.assunto !== assunto) return false;
       if (dif && q.dificuldade !== dif) return false;
-      if (search && !q.enunciado.toLowerCase().includes(search)) return false;
+      if (search && !q.enunciado.toLowerCase().includes(search) && !(q.codigo||"").toLowerCase().includes(search)) return false;
       return true;
     }).map(q => q.id);
   })();
@@ -2084,7 +2084,7 @@ function getPoolFiltrado() {
   const modo = document.getElementById('quiz-modo')?.value || 'todas';
 
   let pool = [...db.questoes].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
-  if (search) pool = pool.filter(q => q.enunciado.toLowerCase().includes(search));
+  if (search) pool = pool.filter(q => q.enunciado.toLowerCase().includes(search) || (q.codigo||"").toLowerCase().includes(search));
   if (assunto) pool = pool.filter(q => q.assunto === assunto);
   if (topico) pool = pool.filter(q => q.topico === topico);
   if (banca) pool = pool.filter(q => q.banca === banca);
