@@ -1130,6 +1130,10 @@ Exemplos:
             <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--red)">Apagar TODAS as questões</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Remove permanentemente todo o banco</div></div>
             <button class="btn btn-danger btn-sm" onclick="apagarTodasQuestoes()">Apagar tudo</button>
           </div>
+          <div style="border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;align-items:center;gap:12px;margin-top:10px">
+            <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">Renumerar questões</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Atribui códigos Q00001, Q00002... por matéria e data de cadastro</div></div>
+            <button class="btn btn-primary btn-sm" onclick="renumerarQuestoes()">Renumerar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1322,10 +1326,34 @@ function gerarCodigoBAP() {
   const existentes = db.questoes.map(q => q.codigo).filter(Boolean);
   let max = 0;
   existentes.forEach(c => {
-    const n = parseInt(c.replace('BAP-', ''));
+    const n = parseInt((c || '').replace(/^(BAP-|Q)/, ''));
     if (!isNaN(n) && n > max) max = n;
   });
-  return 'BAP-' + String(max + 1).padStart(5, '0');
+  return 'Q' + String(max + 1).padStart(5, '0');
+}
+
+async function renumerarQuestoes() {
+  if (!isAdmin()) return;
+  const { db_fire, doc, updateDoc } = window._fire;
+  toast('Renumerando questões...', 'info');
+  // Ordena por matéria (ordem do MATERIAS_DEFAULT) e depois por createdAt
+  const ordenadas = [];
+  MATERIAS_DEFAULT.forEach(mat => {
+    const daMat = db.questoes.filter(q => q.assunto === mat).sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+    ordenadas.push(...daMat);
+  });
+  // Questões de outras matérias
+  const outras = db.questoes.filter(q => !MATERIAS_DEFAULT.includes(q.assunto)).sort((a,b) => (a.createdAt||0) - (b.createdAt||0));
+  ordenadas.push(...outras);
+  for (let i = 0; i < ordenadas.length; i++) {
+    const q = ordenadas[i];
+    const novoCodigo = 'Q' + String(i + 1).padStart(5, '0');
+    if (q.codigo !== novoCodigo) {
+      q.codigo = novoCodigo;
+      await updateDoc(doc(db_fire, 'questoes', q.id), { codigo: novoCodigo });
+    }
+  }
+  toast('Questões renumeradas! ✅', 'success');
 }
 
 const TOPICOS_DEFAULT = {
@@ -2117,9 +2145,18 @@ function renderTecQuestao() {
     </div>`;
   }).join('');
 
+  const frase = fraseMilitar(r ? r.correta : false);
+  const gabarito = (r && !r.correta) ? ` — Gabarito: <strong>${q.gabarito}</strong>` : '';
+  const icon = (r && r.correta) ? '✅' : '❌';
   const feedbackHTML = jaRespondida ? `<div class="tec-feedback ${r.correta?'':'wrong'} show">
-    <div class="tec-feedback-title">${r.correta ? '✅ Resposta correta!' : `❌ Errou! Gabarito: ${q.gabarito}`}</div>
-    ${q.comentario ? `<div class="tec-feedback-text">${renderMd(q.comentario)}</div>` : ''}
+    <div class="tec-feedback-title">${icon} ${frase}${gabarito}</div>
+    ${q.comentario ? `
+      <div style="margin-top:10px">
+        <button onclick="toggleResolucao(this)" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:13px;font-weight:600;padding:0">🔍 Ver resolução</button>
+        <div class="resolucao-box" style="display:none;margin-top:8px">
+          <div class="tec-feedback-text">${renderMd(q.comentario)}</div>
+        </div>
+      </div>` : ''}
     ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}
   </div>` : `<div class="tec-feedback" id="tec-feedback-box">
     ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:0" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}
@@ -2196,11 +2233,33 @@ function tecClicarOpcao(letra) {
   if (btn) btn.disabled = !_tecSelecionado;
 }
 
+const FRASES_ACERTO = [
+  'Missão cumprida, Steve!',
+  'Alvo atingido! Tiro certeiro!',
+  'Excelente, Steve! Continue avançando!',
+  'Na mosca! Você está no caminho certo!',
+  'Confirmado! FO positivo!',
+  'Padrão, Steve! Você é padrão!',
+  'Brabão, Steve! Isso é de guerreiro!',
+];
+const FRASES_ERRO = [
+  'Baixou na missão! Revise e volte mais forte.',
+  'Fora do alvo. Estude e tente novamente!',
+  'AZM! Mas todo guerreiro aprende com a derrota.',
+  'Sanhaço! Hora de revisar esse tópico.',
+  'FO negativo. Mas o preparo é diário!',
+  'Fora do padrão, Steve! Hora de corrigir a mira.',
+  'Não foi dessa vez, Steve. Guerreiro brabão não desiste!',
+];
+function fraseMilitar(correta) {
+  const arr = correta ? FRASES_ACERTO : FRASES_ERRO;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 async function tecResponder() {
   if (!_tecSelecionado) return;
   const q = _tecPool[_tecIdx];
   const correta = _tecSelecionado === q.gabarito;
-  // Atualiza visual
   const letras = ['A','B','C','D','E'];
   letras.filter(l => q.opcoes && q.opcoes[l]).forEach(letra => {
     const el = document.getElementById('tec-opt-' + letra);
@@ -2211,26 +2270,39 @@ async function tecResponder() {
     else if (letra === _tecSelecionado) el.classList.add('wrong');
     el.onclick = null;
   });
-  // Remove botão resolver
   const actions = document.querySelector('.tec-actions');
   if (actions) actions.remove();
-  // Mostra feedback
   const fb = document.getElementById('tec-feedback-box');
+  const frase = fraseMilitar(correta);
+  const icon = correta ? '✅' : '❌';
+  const gabarito = correta ? '' : ` — Gabarito: <strong>${q.gabarito}</strong>`;
   if (fb) {
-    fb.className = 'tec-feedback show' + (correta?'':' wrong');
-    fb.innerHTML = `<div class="tec-feedback-title">${correta?'✅ Resposta correta!':`❌ Errou! Gabarito: ${q.gabarito}`}</div>
-      ${q.comentario?`<div class="tec-feedback-text">${renderMd(q.comentario)}</div>`:''}
-      ${isAdmin()?`<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>`:''}`;
+    fb.className = 'tec-feedback show' + (correta ? '' : ' wrong');
+    fb.innerHTML = `
+      <div class="tec-feedback-title">${icon} ${frase}${gabarito}</div>
+      ${q.comentario ? `
+        <div style="margin-top:10px">
+          <button onclick="toggleResolucao(this)" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:13px;font-weight:600;padding:0">🔍 Ver resolução</button>
+          <div class="resolucao-box" style="display:none;margin-top:8px">
+            <div class="tec-feedback-text">${renderMd(q.comentario)}</div>
+          </div>
+        </div>` : ''}
+      ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}`;
   }
-  // Salva resposta
   const resposta = { id: genId(), questionId: q.id, resposta: _tecSelecionado, correta, timestamp: Date.now() };
   await salvarRespostaFirestore(resposta);
   if (correta) _tecAcertos++; else _tecErros++;
-  // Atualiza score no header
   const acertosTotal = db.respostas.filter(r=>r.correta).length;
   const errosTotal = db.respostas.filter(r=>!r.correta).length;
   const scoreEl = document.querySelector('.tec-score');
   if (scoreEl) scoreEl.innerHTML = `<span class="acertos">✅ ${acertosTotal}</span><span class="erros">❌ ${errosTotal}</span>`;
+}
+
+function toggleResolucao(btn) {
+  const box = btn.nextElementSibling;
+  const open = box.style.display === 'none';
+  box.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '🔼 Fechar resolução' : '🔍 Ver resolução';
 }
 
 function tecNav(tipo) {
@@ -3293,7 +3365,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 // Expõe todas as funções ao window para uso nos onclick do HTML (type=module isola o escopo)
 Object.assign(window, {
   // Matérias & Tópicos
-  saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico,
+  saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
   // Settings
