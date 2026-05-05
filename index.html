@@ -618,7 +618,10 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     <!-- LOGIN -->
     <div id="auth-login">
       <input class="auth-input" type="email" id="login-email" placeholder="Seu e-mail" onkeydown="if(event.key==='Enter')fazerLogin()">
-      <input class="auth-input" type="password" id="login-senha" placeholder="Sua senha" onkeydown="if(event.key==='Enter')fazerLogin()">
+      <div style="position:relative">
+        <input class="auth-input" type="password" id="login-senha" placeholder="Sua senha" onkeydown="if(event.key==='Enter')fazerLogin()" style="padding-right:42px">
+        <button type="button" onclick="var i=document.getElementById('login-senha');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">👁</button>
+      </div>
       <button class="auth-btn" id="btn-login" onclick="fazerLogin()">Entrar</button>
     </div>
     <!-- CADASTRO -->
@@ -626,7 +629,10 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
       <p class="codigo-hint">🔑 Você precisa de um código de acesso para criar sua conta</p>
       <input class="auth-input" type="text" id="cad-nome" placeholder="Seu nome completo">
       <input class="auth-input" type="email" id="cad-email" placeholder="Seu e-mail">
-      <input class="auth-input" type="password" id="cad-senha" placeholder="Crie uma senha (mín. 6 caracteres)">
+      <div style="position:relative">
+        <input class="auth-input" type="password" id="cad-senha" placeholder="Crie uma senha (mín. 6 caracteres)" style="padding-right:42px">
+        <button type="button" onclick="var i=document.getElementById('cad-senha');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">👁</button>
+      </div>
       <input class="auth-input" type="text" id="cad-codigo" placeholder="Código de acesso (ex: ABCD-1234)" style="text-transform:uppercase;letter-spacing:2px;font-weight:700">
       <button class="auth-btn" id="btn-cadastrar" onclick="fazerCadastro()">Criar Conta</button>
     </div>
@@ -809,32 +815,32 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
       <div><h2>✏️ Responder Questões</h2><p id="quiz-subtitle">Use os filtros ou navegue pelas questões</p></div>
     </div>
     <div class="filters-bar" style="border-radius:0;margin-bottom:0;border-bottom:1px solid var(--border)">
-      <input class="search-input" id="quiz-search" placeholder="🔍 Buscar questão..." oninput="renderQuizTec()">
-      <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz();renderQuizTec()">
+      <input class="search-input" id="quiz-search" placeholder="🔍 Buscar questão..." onkeydown="if(event.key==='Enter')renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz()">
         <option value="">Todas as Matérias</option>
       </select>
-      <select class="filter-select" id="quiz-filter-topico" onchange="renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-topico" >
         <option value="">Todos os Tópicos</option>
       </select>
-      <select class="filter-select" id="quiz-filter-banca" onchange="renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-banca" >
         <option value="">Banca</option>
       </select>
-      <select class="filter-select" id="quiz-filter-ano" onchange="renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-ano" >
         <option value="">Ano</option>
       </select>
-      <select class="filter-select" id="quiz-filter-area" onchange="renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-area" >
         <option value="">Área</option>
       </select>
-      <select class="filter-select" id="quiz-filter-concurso" onchange="renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-concurso" >
         <option value="">Concurso</option>
       </select>
-      <select class="filter-select" id="quiz-filter-dif" onchange="renderQuizTec()">
+      <select class="filter-select" id="quiz-filter-dif" >
         <option value="">Dificuldade</option>
         <option value="Fácil">Fácil</option>
         <option value="Médio">Médio</option>
         <option value="Difícil">Difícil</option>
       </select>
-      <select class="filter-select" id="quiz-modo" onchange="renderQuizTec()">
+      <select class="filter-select" id="quiz-modo" >
         <option value="todas">Todas</option>
         <option value="nao_respondida">Não Respondidas</option>
         <option value="errada">Somente Erradas</option>
@@ -1906,6 +1912,19 @@ function getTopicos(assunto) {
   const qs = assunto ? db.questoes.filter(q => q.assunto === assunto) : db.questoes;
   const topicos = [...new Set(qs.map(q => q.topico).filter(Boolean))].sort();
   return topicos;
+}
+
+function limparFiltrosQuiz() {
+  document.getElementById('quiz-search').value = '';
+  document.getElementById('quiz-filter-assunto').value = '';
+  document.getElementById('quiz-filter-topico').value = '';
+  document.getElementById('quiz-filter-banca').value = '';
+  document.getElementById('quiz-filter-ano').value = '';
+  document.getElementById('quiz-filter-area').value = '';
+  document.getElementById('quiz-filter-concurso').value = '';
+  document.getElementById('quiz-filter-dif').value = '';
+  atualizarTopicosQuiz();
+  renderQuizTec();
 }
 
 function limparFiltrosBanco() {
@@ -3768,7 +3787,7 @@ Object.assign(window, {
   // Utilitários
   isAdmin, showTab, toast, renderMd,
   populateSelects, buildOpcoesForm, atualizarTopicosBanco, atualizarTopicosQuiz,
-  renderBanco, setBancoView, renderBancoArvore, startQuizFromFilter, renderQuizStart,
+  renderBanco, setBancoView, limparFiltrosQuiz, renderBancoArvore, startQuizFromFilter, renderQuizStart,
   renderQuizList, iniciarQuizDaQuestao,
   abrirQuestaoSozinha, startQuiz, iniciarSessao, selectOption,
   confirmarResposta, proximaQuestao, skipQuestion, mostrarResultado,
@@ -4395,11 +4414,14 @@ function renderSimuladoAtivo() {
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">${q.assunto?.split('(')[0].trim()||''} ${q.topico?'· '+q.topico:''} ${q._peso>1?'· Peso '+q._peso:''}</div>
           <p style="font-size:15px;line-height:1.7;color:var(--text);margin-bottom:20px">${q.enunciado}</p>
           <div style="display:flex;flex-direction:column;gap:8px">
-            ${letras.filter(l=>q.opcoes&&q.opcoes[l]).map(l=>`
-              <div onclick="simResponder('${q.id}','${l}')" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:8px;border:1.5px solid ${resp===l?'var(--blue)':'var(--border)'};background:${resp===l?'var(--blue-light)':'var(--card)'};cursor:pointer;transition:all .12s">
-                <span style="font-weight:700;color:${resp===l?'var(--blue)':'var(--text-muted)'};min-width:20px">${l}</span>
-                <span style="font-size:14px;color:var(--text);line-height:1.5">${q.opcoes[l]}</span>
-              </div>`).join('')}
+            ${letras.filter(l=>q.opcoes&&q.opcoes[l]).map(l=>{
+              const riscadas = (_sim.riscadas&&_sim.riscadas[q.id])||new Set();
+              const isRiscada = riscadas.has(l);
+              const isSel = resp===l;
+              return `<div onclick="simResponder('${q.id}','${l}')" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:8px;border:1.5px solid ${isSel?'var(--blue)':isRiscada?'var(--border)':'var(--border)'};background:${isSel?'var(--blue-light)':'var(--card)'};cursor:pointer;transition:all .12s;opacity:${isRiscada?'0.45':'1'}">
+                <span style="font-weight:700;color:${isSel?'var(--blue)':'var(--text-muted)'};min-width:20px">${l}</span>
+                <span style="font-size:14px;color:var(--text);line-height:1.5;${isRiscada?'text-decoration:line-through':''}">${q.opcoes[l]}</span>
+              </div>`;}).join('')}
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -4418,7 +4440,32 @@ function renderSimuladoAtivo() {
   tickSimulado();
 }
 
-function simResponder(qId, letra) { if (!_sim||_sim.pausado) return; _sim.respostas[qId]=letra; renderSimuladoAtivo(); }
+function simResponder(qId, letra) {
+  if (!_sim || _sim.pausado) return;
+  if (!_sim.riscadas) _sim.riscadas = {};
+  if (!_sim.riscadas[qId]) _sim.riscadas[qId] = new Set();
+  const agora = Date.now();
+  const lastKey = `_simLastClick_${qId}_${letra}`;
+  const lastClick = window[lastKey] || 0;
+  const isDblClick = (agora - lastClick) < 400;
+  window[lastKey] = agora;
+  if (isDblClick) {
+    // Toggle riscada
+    if (_sim.riscadas[qId].has(letra)) {
+      _sim.riscadas[qId].delete(letra);
+    } else {
+      _sim.riscadas[qId].add(letra);
+      // Se estava selecionada, deseleciona
+      if (_sim.respostas[qId] === letra) delete _sim.respostas[qId];
+    }
+  } else {
+    // Single click — seleciona (se não estiver riscada)
+    if (!_sim.riscadas[qId].has(letra)) {
+      _sim.respostas[qId] = letra;
+    }
+  }
+  renderSimuladoAtivo();
+}
 function simNavegar(dir) { if (!_sim) return; _sim.idx=Math.max(0,Math.min(_sim.questoes.length-1,_sim.idx+dir)); renderSimuladoAtivo(); }
 function simIr(idx) { if (!_sim) return; _sim.idx=idx; renderSimuladoAtivo(); }
 
