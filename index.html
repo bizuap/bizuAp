@@ -192,6 +192,11 @@ window.carregarAdmin = async function() {
   const el2 = document.getElementById('admin-stat-vencendo');
   if (el1) el1.textContent = ativos;
   if (el2) el2.textContent = vencendo;
+  // Stat de reportes
+  const novosReportes = (db.reportes||[]).filter(r => !r.resolvido).length;
+  const elR = document.getElementById('admin-stat-reportes');
+  if (elR) elR.textContent = novosReportes;
+  renderBadgeReportes();
   renderAlunos(window._todosAlunos);
 };
 
@@ -439,6 +444,18 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
 .tag-red { background:var(--red-light); color:var(--red); }
 .tag-amber { background:var(--amber-light); color:var(--amber); }
 .tag-gray { background:#f1f5f9; color:#64748b; }
+.tag-rascunho { background:#fef3c7; color:#92400e; }
+.tag-anulada { background:#fee2e2; color:#991b1b; }
+.tag-desatualizada { background:#ffedd5; color:#9a3412; }
+.tag-atualizada { background:#d1fae5; color:#065f46; }
+.q-stat { font-size:11px; color:var(--text-muted); display:inline-flex; align-items:center; gap:3px; }
+.reporte-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; padding:2px 8px; border-radius:99px; background:#fee2e2; color:#991b1b; }
+.card-reporte { border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:8px; background:var(--card); }
+.revisao-card { border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:10px; background:var(--card); }
+.revisao-card.aprovado { border-color:var(--green); }
+.revisao-card.ignorado { opacity:.5; }
+.revisao-field label { font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px; font-weight:600; letter-spacing:.3px; }
+.revisao-field { margin-bottom:10px; }
 .q-status { width:8px; height:8px; border-radius:50%; background:var(--border); flex-shrink:0; margin-top:6px; }
 .q-status.correta { background:var(--green); }
 .q-status.errada { background:var(--red); }
@@ -709,8 +726,9 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     </div>
   </div>
   <div class="sidebar-footer">
-    <div class="nav-item admin-only" style="display:none" onclick="showTab('admin')">
+    <div class="nav-item admin-only" style="display:none" onclick="showTab('admin')" id="nav-admin">
       <span class="icon">👑</span><span>Admin</span>
+      <span id="badge-reportes" style="display:none;background:#E24B4A;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 6px;margin-left:4px">0</span>
     </div>
     <div class="nav-item admin-only" style="display:none" onclick="showTab('config')">
       <span class="icon">⚙️</span><span>Configurações</span>
@@ -785,11 +803,16 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
           <option value="Difícil">Difícil</option>
         </select>
         <select class="filter-select" id="filter-status">
-          <option value="">Todos os Status</option>
+          <option value="">Todos</option>
           <option value="nao_respondida">Não Respondidas</option>
           <option value="correta">Acertadas</option>
           <option value="errada">Erradas</option>
           <option value="sem_comentario">Sem Comentário</option>
+          <option value="q_ativa">✅ Ativas</option>
+          <option value="q_rascunho">📝 Rascunho</option>
+          <option value="q_desatualizada">⚠️ Desatualizadas</option>
+          <option value="q_anulada">❌ Anuladas</option>
+          <option value="reportadas">🚩 Reportadas</option>
         </select>
         <button class="btn btn-primary btn-sm" onclick="renderBanco()" style="white-space:nowrap">🔍 Filtrar</button>
         <button class="btn btn-ghost btn-sm" onclick="limparFiltrosBanco()" style="white-space:nowrap">✕ Limpar</button>
@@ -1143,13 +1166,34 @@ Exemplos:
 
   <!-- ADMIN -->
   <div class="tab-content" id="tab-admin">
-    <div class="page-header"><div><h2>👑 Painel Admin</h2><p>Gerencie alunos e códigos de acesso</p></div></div>
+    <div class="page-header">
+      <div><h2>👑 Painel Admin</h2><p>Gerencie alunos, questões e reportes</p></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="abrirExportar()">📤 Exportar Questões</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-revisao-file').click()">📥 Importar com Revisão</button>
+        <input type="file" id="import-revisao-file" accept=".json" style="display:none" onchange="carregarRevisaoImport(this)">
+        <button class="btn btn-ghost btn-sm" style="color:#d97706;border-color:#d97706" onclick="triagemDesatualizadas()">🔍 Triagem Desatualizadas</button>
+      </div>
+    </div>
     <div class="page-body">
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px">
         <div class="stat-card"><div class="stat-icon" style="background:#ecfdf5">👥</div><div class="stat-info"><h3 id="admin-stat-ativos">—</h3><p>Alunos ativos</p></div></div>
         <div class="stat-card"><div class="stat-icon" style="background:#fffbeb">⚠️</div><div class="stat-info"><h3 id="admin-stat-vencendo">—</h3><p>Vencem em 7 dias</p></div></div>
         <div class="stat-card"><div class="stat-icon" style="background:#eff6ff">🔑</div><div class="stat-info"><h3 id="admin-stat-codigos-disp">—</h3><p>Códigos disponíveis</p></div></div>
         <div class="stat-card"><div class="stat-icon" style="background:#f5f3ff">✅</div><div class="stat-info"><h3 id="admin-stat-codigos-usados">—</h3><p>Códigos usados</p></div></div>
+        <div class="stat-card" style="cursor:pointer" onclick="renderReportes()"><div class="stat-icon" style="background:#fee2e2">🚩</div><div class="stat-info"><h3 id="admin-stat-reportes">—</h3><p>Reportes novos</p></div></div>
+      </div>
+
+      <!-- PAINEL REPORTES -->
+      <div class="form-section" style="margin-bottom:14px" id="painel-reportes" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h3 style="margin:0;border:none;padding:0">🚩 Reportes dos Alunos</h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="exportarReportes()">📤 Exportar Reportadas</button>
+            <button class="btn btn-ghost btn-sm" onclick="carregarReportes().then(renderReportes)">🔄 Atualizar</button>
+          </div>
+        </div>
+        <div id="lista-reportes"><p style="color:var(--text-muted);font-size:13px">Nenhum reporte encontrado.</p></div>
       </div>
       <div class="form-section" style="margin-bottom:14px">
         <h3>🔑 Gerar Código de Acesso</h3>
@@ -1211,6 +1255,7 @@ Exemplos:
         <button class="settings-tab active" onclick="showSettingsTab('materias')" id="stab-materias">📚 Matérias & Tópicos</button>
         <button class="settings-tab" onclick="showSettingsTab('integracoes')" id="stab-integracoes">🔌 Integrações</button>
         <button class="settings-tab" onclick="showSettingsTab('dados')" id="stab-dados">🗃 Dados</button>
+        <button class="settings-tab" onclick="showSettingsTab('sistema')" id="stab-sistema">📖 Sistema</button>
       </div>
       <div id="stab-content-materias">
         <div style="display:flex;gap:10px;margin-bottom:18px">
@@ -1311,6 +1356,145 @@ Exemplos:
 </div>
 
 <!-- MODAL EDITAR QUESTÃO -->
+<!-- MODAL REPORTE -->
+<div class="modal-overlay" id="modal-reporte">
+  <div class="modal" style="max-width:480px">
+    <h3>🚩 Reportar Problema</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Ajude a manter o banco atualizado reportando erros ou desatualizações.</p>
+    <input type="hidden" id="reporte-questao-id">
+    <input type="hidden" id="reporte-questao-codigo">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Tipo do problema</label>
+      <select class="form-select" id="reporte-tipo">
+        <option value="gabarito">Gabarito incorreto</option>
+        <option value="lei_desatualizada">Lei/dispositivo desatualizado</option>
+        <option value="enunciado">Erro no enunciado</option>
+        <option value="alternativa">Alternativa incorreta</option>
+        <option value="assunto_errado">Questão no assunto errado</option>
+        <option value="outro">Outro</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Descrição</label>
+      <textarea class="form-textarea" id="reporte-descricao" style="min-height:90px" placeholder="Descreva o problema encontrado..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-reporte').classList.remove('show')">Cancelar</button>
+      <button class="btn btn-primary" onclick="enviarReporte()">🚩 Enviar Reporte</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL STATUS QUESTÃO -->
+<div class="modal-overlay" id="modal-status-questao">
+  <div class="modal" style="max-width:480px">
+    <h3>⚠️ Alterar Status da Questão</h3>
+    <input type="hidden" id="status-questao-id">
+    <div class="form-group" style="margin-bottom:12px">
+      <label>Status</label>
+      <select class="form-select" id="status-questao-valor">
+        <option value="ativa">✅ Ativa</option>
+        <option value="rascunho">📝 Rascunho</option>
+        <option value="desatualizada">⚠️ Desatualizada</option>
+        <option value="anulada">❌ Anulada</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Motivo</label>
+      <textarea class="form-textarea" id="status-questao-motivo" style="min-height:80px" placeholder="Explique o motivo da mudança de status..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-status-questao').classList.remove('show')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarStatusQuestao()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REVISÃO IMPORTAÇÃO -->
+<div class="modal-overlay" id="modal-revisao-import" style="align-items:flex-start;padding-top:40px">
+  <div class="modal" style="max-width:800px;max-height:85vh;overflow-y:auto;padding:0">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);z-index:1">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h3 style="margin:0">📝 Revisão de Importação</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin:4px 0 0">Revise cada questão antes de salvar no banco</p>
+        </div>
+        <div id="revisao-stats" style="font-size:12px;color:var(--text-muted);text-align:right"></div>
+      </div>
+    </div>
+    <div style="padding:16px 20px">
+      <div id="revisao-lista"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);margin-top:8px">
+        <div id="revisao-resumo" style="font-size:13px;color:var(--text-muted)"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="document.getElementById('modal-revisao-import').classList.remove('show')">Cancelar</button>
+          <button class="btn btn-primary" onclick="confirmarRevisaoImport()">💾 Confirmar e Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EXPORTAR QUESTÕES -->
+<div class="modal-overlay" id="modal-exportar">
+  <div class="modal" style="max-width:520px">
+    <h3>📤 Exportar Questões</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">Filtre e exporte para análise ou revisão externa.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="form-group">
+        <label>Matéria</label>
+        <select class="form-select" id="exp-assunto"><option value="">Todas</option></select>
+      </div>
+      <div class="form-group">
+        <label>Tópico</label>
+        <select class="form-select" id="exp-topico"><option value="">Todos</option></select>
+      </div>
+      <div class="form-group">
+        <label>Concurso</label>
+        <select class="form-select" id="exp-concurso"><option value="">Todos</option></select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select class="form-select" id="exp-status">
+          <option value="">Todos</option>
+          <option value="ativa">Ativas</option>
+          <option value="rascunho">Rascunho</option>
+          <option value="desatualizada">Desatualizadas</option>
+          <option value="anulada">Anuladas</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ano</label>
+        <select class="form-select" id="exp-ano"><option value="">Todos</option></select>
+      </div>
+      <div class="form-group">
+        <label>Filtro especial</label>
+        <select class="form-select" id="exp-especial">
+          <option value="">Nenhum</option>
+          <option value="sem_comentario">Sem comentário</option>
+          <option value="reportadas">Reportadas</option>
+          <option value="baixo_acerto">Taxa de acerto abaixo de 40%</option>
+          <option value="alto_acerto">Taxa de acerto acima de 90%</option>
+        </select>
+      </div>
+    </div>
+    <div style="background:var(--surface);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text-muted)" id="exp-preview-count">
+      Selecione os filtros para ver quantas questões serão exportadas.
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Formato</label>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="exp-formato" value="json" checked> JSON</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="exp-formato" value="csv"> CSV</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-exportar').classList.remove('show')">Cancelar</button>
+      <button class="btn btn-primary" onclick="executarExportacao()">📤 Exportar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-editar-questao">
   <div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
     <h3>✏️ Editar Questão</h3>
@@ -1376,9 +1560,14 @@ Exemplos:
         <button class="gabarito-btn" onclick="setEditGabarito('E')">E</button>
       </div>
     </div>
-    <div class="form-group" style="margin-bottom:16px">
+    <div class="form-group" style="margin-bottom:12px">
       <label>Comentário / Fundamentação</label>
       <textarea class="form-textarea" id="edit-q-comentario" style="min-height:100px"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Questões Relacionadas <span style="font-size:11px;color:var(--text-muted);font-weight:400">(códigos separados por vírgula — ex: Q00001, Q00002)</span></label>
+      <input class="form-input" id="edit-q-relacionadas" placeholder="Q00001, Q00002...">
+      <div id="edit-q-relacionadas-preview" style="margin-top:6px;font-size:12px;color:var(--text-muted)"></div>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="fecharEditarQuestao()">Cancelar</button>
@@ -1395,6 +1584,7 @@ Exemplos:
         <button class="settings-tab active" onclick="showSettingsTab('materias')" id="stab-materias">📚 Matérias & Tópicos</button>
         <button class="settings-tab" onclick="showSettingsTab('integracoes')" id="stab-integracoes">🔌 Integrações</button>
         <button class="settings-tab" onclick="showSettingsTab('dados')" id="stab-dados">🗃 Dados</button>
+        <button class="settings-tab" onclick="showSettingsTab('sistema')" id="stab-sistema">📖 Sistema</button>
       </div>
     </div>
     <div id="stab-content-materias" style="flex:1;overflow-y:auto;padding:18px 20px">
@@ -1453,6 +1643,84 @@ Exemplos:
         </div>
       </div>
     </div>
+    <div id="stab-content-sistema" style="display:none;flex:1;overflow-y:auto;padding:18px 20px">
+      <!-- CHANGELOG -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <p style="font-size:13px;font-weight:700;color:var(--text)">📋 Changelog</p>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <div style="background:var(--blue-light);padding:10px 14px;border-bottom:1px solid var(--border)">
+            <div style="font-size:12px;font-weight:700;color:var(--blue)">v2.0 — ${new Date().toLocaleDateString('pt-BR')}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Sessão atual</div>
+          </div>
+          <div style="padding:12px 14px;font-size:12px;color:var(--text);line-height:1.8">
+            • Campo <code>texto_base</code> nas questões — exibido no modo TEC antes do enunciado<br>
+            • Aba Simulados reorganizada: Papiro Tático primeiro, Provas Anteriores abaixo<br>
+            • Visão aluno/admin na aba Simulados com botão "Transformar em Simulado"<br>
+            • Campo <code>tipo</code> nas provas: importado | personalizado<br>
+            • Criação automática de concursos novos no import<br>
+            • Sistema de status de questões: ativa | rascunho | desatualizada | anulada<br>
+            • Botão 🚩 Reportar problema no modo TEC<br>
+            • Painel de reportes dos alunos no admin com exportação JSON/CSV<br>
+            • Exportação unificada de questões com filtros completos<br>
+            • Tela de revisão de importação com editor completo por questão<br>
+            • Histórico de edições preservado por questão<br>
+            • Duplicar questão (cria rascunho)<br>
+            • Estatísticas de desempenho por questão (taxa de acerto)<br>
+            • Badge contador de reportes novos no menu admin<br>
+            • Aba Sistema nas Configurações (esta tela)
+          </div>
+          <div style="background:var(--surface);padding:10px 14px;border-top:1px solid var(--border)">
+            <div style="font-size:12px;font-weight:700;color:var(--text-muted)">v1.0 — Versão inicial</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.7">
+              Banco de questões, modo TEC, simulados, geração por IA, import JSON/PDF, ranking, sistema de usuários com códigos de acesso.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOCUMENTAÇÃO -->
+      <div style="margin-bottom:20px">
+        <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📚 Documentação</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${[
+            {titulo:'Campos de uma Questão', conteudo:'<code>codigo</code> (Q00001) · <code>enunciado</code> · <code>opcoes</code> {A-E} · <code>gabarito</code> · <code>assunto</code> · <code>topico</code> · <code>banca</code> · <code>ano</code> · <code>dificuldade</code> · <code>area</code> · <code>concurso</code> · <code>comentario</code> · <code>texto_base</code> · <code>status</code> (ativa/rascunho/desatualizada/anulada) · <code>motivo_status</code> · <code>historico[]</code> · <code>fonte</code> (manual/ia/importado) · <code>provaId</code> · <code>createdAt</code>'},
+            {titulo:'Fontes de Questões', conteudo:'<b>Manual:</b> Admin preenche formulário na aba Cadastrar.<br><b>IA:</b> Geração automática via API Claude/Gemini na aba Gerar.<br><b>Importado:</b> Via JSON ou PDF+IA na aba Importar.'},
+            {titulo:'Tipos de Prova/Simulado', conteudo:'<b>importado:</b> Criado via import JSON com "Disponibilizar como Simulado". Aparece em Provas Anteriores.<br><b>personalizado:</b> Montado pelo admin ou transformado de uma prova. Aparece em Simulados do Papiro Tático.'},
+            {titulo:'Exportação de Questões', conteudo:'Botão "Exportar Questões" no admin. Filtros: matéria, tópico, concurso, status, ano, sem comentário, reportadas, taxa de acerto. Formatos: JSON (para reimportar) e CSV (para análise).'},
+            {titulo:'Tela de Revisão de Importação', conteudo:'Após exportar, corrigir externamente e reimportar, abre a tela de revisão. Cada questão pode ser aprovada, editada ou ignorada. Todos os campos são editáveis incluindo assunto e tópico. Só os aprovados são salvos via updateDoc no Firestore.'},
+            {titulo:'Sistema de Reportes', conteudo:'Alunos reportam problemas via botão 🚩 no modo TEC. Admin visualiza, exporta e resolve no painel Admin. Questões reportadas podem ser exportadas para análise externa.'},
+            {titulo:'Status de Questões', conteudo:'<b>ativa:</b> Aparece no pool TEC e simulados.<br><b>rascunho:</b> Visível só para admin, fora do pool.<br><b>desatualizada:</b> Fora do pool, admin pode adaptar/atualizar.<br><b>anulada:</b> Fora do pool, preservada no histórico.'},
+          ].map(({titulo,conteudo}) => `
+            <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+              <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">${titulo}</summary>
+              <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">${conteudo}</div>
+            </details>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- TUTORIAIS -->
+      <div style="margin-bottom:20px">
+        <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🎓 Tutoriais</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${[
+            {titulo:'Como importar uma prova completa', conteudo:'1. Vá para a aba <b>Importar</b><br>2. Cole o JSON das questões ou faça upload<br>3. Preencha nome da prova, ano e tempo<br>4. Marque "Disponibilizar como Simulado" se quiser<br>5. Clique em Validar e depois Confirmar'},
+            {titulo:'Como gerar comentários em lote', conteudo:'1. No <b>Painel Admin</b>, clique em "Exportar Questões"<br>2. Filtre por "Sem comentário" e exporte em JSON<br>3. Traga o JSON para o chat com Claude<br>4. Claude gera os comentários para cada questão<br>5. Reimporte o JSON e use a Tela de Revisão para aprovar'},
+            {titulo:'Como revisar uma prova mensalmente', conteudo:'1. No <b>Painel Admin</b>, clique em "Exportar Questões"<br>2. Filtre por matéria e/ou tópico desejado<br>3. Exporte em JSON e traga para o chat<br>4. Claude revisa: conteúdo, gabarito, atualização legal<br>5. Reimporte e revise na Tela de Revisão'},
+            {titulo:'Como resolver um reporte de aluno', conteudo:'1. No <b>Painel Admin</b>, acesse o painel Reportes<br>2. Leia o problema reportado<br>3. Clique em "Revisar Questão" para abrir direto no banco<br>4. Use "Alterar Status" ou "Editar" para corrigir<br>5. Marque o reporte como Resolvido'},
+            {titulo:'Como marcar uma questão como desatualizada', conteudo:'1. No <b>Banco de Questões</b>, localize a questão<br>2. Clique em "⚠️ Status" na questão<br>3. Selecione "Desatualizada" e explique o motivo<br>4. A questão sai do pool TEC automaticamente<br>5. Para adaptar/atualizar, exporte e traga para o chat'},
+          ].map(({titulo,conteudo}) => `
+            <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+              <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">${titulo}</summary>
+              <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">${conteudo}</div>
+            </details>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+
     <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closeSettings()">Fechar</button>
     </div>
@@ -1740,6 +2008,8 @@ let db = {
   settings: JSON.parse(localStorage.getItem('pt_settings') || '{}'),
   topicos: {},
   favoritos: JSON.parse(localStorage.getItem('pt_favoritos') || '[]'),
+  reportes: [],
+  stats: {},
 };
 
 function isAdmin() {
@@ -1772,6 +2042,27 @@ async function carregarQuestoes() {
     return { id: d.id, ...data };
   });
   updateBadge();
+}
+
+// Carrega reportes dos alunos
+async function carregarReportes() {
+  if (!isAdmin()) return;
+  try {
+    const { db_fire, collection, getDocs } = window._fire;
+    const snap = await getDocs(collection(db_fire, 'reportes'));
+    db.reportes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { db.reportes = []; }
+}
+
+// Calcula estatísticas de desempenho por questão
+function calcularStats() {
+  db.stats = {};
+  db.respostas.forEach(r => {
+    if (!r.questaoId) return;
+    if (!db.stats[r.questaoId]) db.stats[r.questaoId] = { total: 0, acertos: 0 };
+    db.stats[r.questaoId].total++;
+    if (r.correta) db.stats[r.questaoId].acertos++;
+  });
 }
 
 // Carrega respostas do usuário atual
@@ -2028,7 +2319,10 @@ async function init() {
   await carregarQuestoes();
   await carregarProvas();
   await carregarRespostas();
+  calcularStats();
+  await carregarReportes();
   updateBadge();
+  renderBadgeReportes();
   populateSelects();
   // Verifica se há link direto para questão (#BAP-XXXXX)
   const hash = location.hash.replace('#','');
@@ -2237,6 +2531,8 @@ function renderBanco() {
   const status = document.getElementById('filter-status').value;
 
   let list = db.questoes.filter(q => {
+    // Rascunho visível só para admin
+    if (q.status === 'rascunho' && !isAdmin()) return false;
     if (assunto && q.assunto !== assunto) return false;
     if (topico && q.topico !== topico) return false;
     if (dif && q.dificuldade !== dif) return false;
@@ -2247,6 +2543,11 @@ function renderBanco() {
       if (status === 'correta' && (!r || !r.correta)) return false;
       if (status === 'errada' && (!r || r.correta)) return false;
       if (status === 'sem_comentario' && q.comentario) return false;
+      if (status === 'q_ativa' && (q.status||'ativa') !== 'ativa') return false;
+      if (status === 'q_rascunho' && q.status !== 'rascunho') return false;
+      if (status === 'q_desatualizada' && q.status !== 'desatualizada') return false;
+      if (status === 'q_anulada' && q.status !== 'anulada') return false;
+      if (status === 'reportadas' && !(db.reportes||[]).some(r => r.questaoId === q.id && !r.resolvido)) return false;
     }
     return true;
   });
@@ -2272,7 +2573,14 @@ function renderBanco() {
     const stClass = r ? (r.correta ? 'correta' : 'errada') : '';
     const difTag = q.dificuldade === 'Fácil' ? 'tag-green' : q.dificuldade === 'Difícil' ? 'tag-red' : 'tag-amber';
     const assuntoShort = q.assunto.split('(')[0].trim();
-    return `<div class="question-item" onclick="abrirQuestaoSozinha('${q.id}')">
+    const qStatus = q.status || 'ativa';
+    const statusBadge = qStatus !== 'ativa' ? `<span class="tag tag-${qStatus}">${qStatus==='rascunho'?'📝 Rascunho':qStatus==='desatualizada'?'⚠️ Desatualizada':'❌ Anulada'}</span>` : '';
+    const stat = db.stats[q.id];
+    const taxaBadge = stat && stat.total >= 5 ? `<span class="q-stat" title="${stat.acertos}/${stat.total} acertos">📊 ${Math.round((stat.acertos/stat.total)*100)}%</span>` : '';
+    const reportado = (db.reportes||[]).some(r => r.questaoId === q.id && !r.resolvido);
+    const reporteBadge = reportado && isAdmin() ? '<span class="tag" style="background:#fee2e2;color:#991b1b">🚩 Reportado</span>' : '';
+    const atualBadge = q.atualizada_em ? `<span class="tag tag-atualizada" title="Atualizada em ${new Date(q.atualizada_em).toLocaleDateString('pt-BR')}">🔄 Atualizada</span>` : '';
+    return `<div class="question-item" style="${qStatus==='rascunho'?'border-left:3px solid #f59e0b':qStatus!=='ativa'?'opacity:.7':''}" onclick="abrirQuestaoSozinha('${q.id}')">
       <span class="q-number">${q.codigo || '#'+(i+1)}</span>
       <div class="q-content">
         <p class="q-enunciado">${q.enunciado}</p>
@@ -2282,10 +2590,13 @@ function renderBanco() {
           ${q.banca ? `<span class="tag tag-gray">${q.banca}${q.ano ? ' '+q.ano : ''}</span>` : ''}
           ${q.fonte === 'ia' ? '<span class="tag tag-blue">🤖 IA</span>' : ''}
           ${r ? `<span class="tag ${r.correta ? 'tag-green' : 'tag-red'}">${r.correta ? '✓ Acertada' : '✗ Errada'}</span>` : ''}
+          ${statusBadge}${atualBadge}${reporteBadge}${taxaBadge}
         </div>
       </div>
       ${isAdmin() ? `<div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="abrirEditarQuestao('${q.id}')" title="Editar">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="duplicarQuestao('${q.id}')" title="Duplicar">⧉</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirStatusQuestao('${q.id}')" title="Status">⚠️</button>
         <button class="btn btn-danger btn-sm" onclick="excluirQuestao('${q.id}')" title="Excluir">🗑</button>
       </div>` : ''}
       <div class="q-status ${stClass}"></div>
@@ -2367,7 +2678,9 @@ function getPoolFiltrado() {
   const dif = document.getElementById('quiz-filter-dif')?.value || '';
   const modo = document.getElementById('quiz-modo')?.value || 'todas';
 
-  let pool = [...db.questoes].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+  let pool = [...db.questoes]
+    .filter(q => !['rascunho','anulada','desatualizada'].includes(q.status))
+    .sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
   if (search) pool = pool.filter(q => q.enunciado.toLowerCase().includes(search) || (q.codigo||"").toLowerCase().includes(search));
   if (assunto) pool = pool.filter(q => q.assunto === assunto);
   if (topico) pool = pool.filter(q => q.topico === topico);
@@ -2469,6 +2782,7 @@ function renderTecQuestao() {
         <div style="display:flex;align-items:center;gap:8px">
           <span class="tec-q-code">#${codigo}</span>
           <button class="tec-q-share" onclick="tecCompartilhar('${link}','${codigo}')" title="Compartilhar">🔗</button>
+          <button class="tec-q-share" onclick="abrirReporte('${q.id}','${codigo}')" title="Reportar problema" style="color:#E24B4A">🚩</button>
         </div>
       </div>
       <div class="tec-q-body">
@@ -2574,8 +2888,12 @@ async function tecResponder() {
         </div>` : ''}
       ${isAdmin() ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="abrirEditarQuestao('${q.id}')">✏️ Editar Questão</button>` : ''}`;
   }
-  const resposta = { id: genId(), questionId: q.id, resposta: _tecSelecionado, correta, timestamp: Date.now() };
+  const resposta = { id: genId(), questionId: q.id, questaoId: q.id, resposta: _tecSelecionado, correta, timestamp: Date.now() };
   await salvarRespostaFirestore(resposta);
+  // Atualiza estatísticas locais
+  if (!db.stats[q.id]) db.stats[q.id] = { total: 0, acertos: 0 };
+  db.stats[q.id].total++;
+  if (correta) db.stats[q.id].acertos++;
   if (correta) _tecAcertos++; else _tecErros++;
   const acertosTotal = db.respostas.filter(r=>r.correta).length;
   const errosTotal = db.respostas.filter(r=>!r.correta).length;
@@ -3647,6 +3965,17 @@ function abrirEditarQuestao(id) {
   document.getElementById('edit-q-ano').value = q.ano || '';
   document.getElementById('edit-q-comentario').value = q.comentario || '';
   document.getElementById('edit-q-texto-base').value = q.texto_base || '';
+  const relInput = document.getElementById('edit-q-relacionadas');
+  if (relInput) {
+    relInput.value = (q.relacionadas || []).join(', ');
+    relInput.oninput = () => {
+      const codigos = relInput.value.split(',').map(s=>s.trim()).filter(Boolean);
+      const preview = document.getElementById('edit-q-relacionadas-preview');
+      if (!preview) return;
+      const found = codigos.map(c => { const r = db.questoes.find(x=>x.codigo===c); return r ? `<span class="tag tag-blue">${c}</span>` : `<span class="tag tag-red">${c} nao encontrado</span>`; });
+      preview.innerHTML = found.join(' ');
+    };
+  }
   document.getElementById('edit-q-dificuldade').value = q.dificuldade || 'Médio';
   // Área e Concurso
   const selArea = document.getElementById('edit-q-area');
@@ -3700,6 +4029,7 @@ async function salvarEdicaoQuestao() {
     concurso: document.getElementById('edit-q-concurso').value.trim(),
     comentario: document.getElementById('edit-q-comentario').value.trim(),
     texto_base: document.getElementById('edit-q-texto-base').value.trim(),
+    relacionadas: (document.getElementById('edit-q-relacionadas')?.value||'').split(',').map(s=>s.trim()).filter(Boolean),
   };
   await updateDoc(doc(db_fire, 'questoes', id), updates);
   const idx = db.questoes.findIndex(q => q.id === id);
@@ -3765,7 +4095,7 @@ function openSettings() {
 }
 
 function showSettingsTab(tab) {
-  ['materias','integracoes','dados'].forEach(t => {
+  ['materias','integracoes','dados','sistema'].forEach(t => {
     const btn = document.getElementById('stab-' + t);
     const el = document.getElementById('stab-content-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
@@ -3945,7 +4275,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -4496,6 +4826,454 @@ async function salvarSimulado() {
   toast('Simulado salvo com sucesso! ✅', 'success');
   window._simRascunho = null;
   renderSimulados();
+}
+
+// ============================================================
+// REPORTES
+// ============================================================
+function renderBadgeReportes() {
+  const novos = (db.reportes || []).filter(r => !r.resolvido).length;
+  const badge = document.getElementById('badge-reportes');
+  const stat = document.getElementById('admin-stat-reportes');
+  if (badge) { badge.textContent = novos; badge.style.display = novos > 0 ? 'inline' : 'none'; }
+  if (stat) stat.textContent = novos;
+}
+
+function abrirReporte(questaoId, codigo) {
+  document.getElementById('reporte-questao-id').value = questaoId;
+  document.getElementById('reporte-questao-codigo').value = codigo;
+  document.getElementById('reporte-descricao').value = '';
+  document.getElementById('modal-reporte').classList.add('show');
+}
+
+async function enviarReporte() {
+  const questaoId = document.getElementById('reporte-questao-id').value;
+  const codigo = document.getElementById('reporte-questao-codigo').value;
+  const tipo = document.getElementById('reporte-tipo').value;
+  const descricao = document.getElementById('reporte-descricao').value.trim();
+  if (!descricao) { toast('Descreva o problema!', 'error'); return; }
+  const { db_fire, collection, addDoc, serverTimestamp } = window._fire;
+  const reporte = {
+    questaoId, codigo, tipo, descricao,
+    usuario: window._currentUser?.email || 'anonimo',
+    resolvido: false,
+    criadoEm: serverTimestamp(),
+  };
+  const ref = await addDoc(collection(db_fire, 'reportes'), reporte);
+  db.reportes.push({ id: ref.id, ...reporte });
+  renderBadgeReportes();
+  document.getElementById('modal-reporte').classList.remove('show');
+  toast('Reporte enviado! Obrigado pela contribuicao.', 'success');
+}
+
+function renderReportes() {
+  const painel = document.getElementById('painel-reportes');
+  const lista = document.getElementById('lista-reportes');
+  if (!painel || !lista) return;
+  painel.style.display = 'block';
+  const reportes = (db.reportes || []).sort((a,b) => (b.criadoEm?.seconds||0) - (a.criadoEm?.seconds||0));
+  if (!reportes.length) { lista.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum reporte encontrado.</p>'; return; }
+  const tipoLabel = { gabarito:'Gabarito incorreto', lei_desatualizada:'Lei desatualizada', enunciado:'Erro no enunciado', alternativa:'Alternativa incorreta', assunto_errado:'Assunto errado', outro:'Outro' };
+  lista.innerHTML = reportes.map(r => {
+    const q = db.questoes.find(q => q.id === r.questaoId);
+    const data = r.criadoEm?.seconds ? new Date(r.criadoEm.seconds*1000).toLocaleDateString('pt-BR') : '—';
+    return `<div class="card-reporte" style="${r.resolvido?'opacity:.5':''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <div>
+          <span style="font-size:12px;font-weight:700;color:var(--blue)">${r.codigo||r.questaoId}</span>
+          <span class="tag tag-amber" style="margin-left:6px">${tipoLabel[r.tipo]||r.tipo}</span>
+          ${r.resolvido?'<span class="tag tag-green" style="margin-left:4px">✅ Resolvido</span>':''}
+        </div>
+        <span style="font-size:11px;color:var(--text-muted)">${data} · ${r.usuario}</span>
+      </div>
+      ${q?`<p style="font-size:12px;color:var(--text-muted);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.enunciado?.slice(0,100)||''}</p>`:''}
+      <p style="font-size:13px;color:var(--text);margin-bottom:10px">${r.descricao}</p>
+      <div style="display:flex;gap:8px">
+        ${!r.resolvido?`<button class="btn btn-primary btn-sm" onclick="resolverReporte('${r.id}')">✅ Resolver</button>`:''}
+        ${q?`<button class="btn btn-ghost btn-sm" onclick="abrirEditarQuestao('${q.id}')">👀 Revisar Questao</button>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="descartarReporte('${r.id}')">🗑 Descartar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function resolverReporte(id) {
+  const { db_fire, doc, updateDoc } = window._fire;
+  await updateDoc(doc(db_fire, 'reportes', id), { resolvido: true });
+  const r = db.reportes.find(r => r.id === id);
+  if (r) r.resolvido = true;
+  renderBadgeReportes();
+  renderReportes();
+  toast('Reporte marcado como resolvido!');
+}
+
+async function descartarReporte(id) {
+  if (!confirm('Descartar este reporte?')) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  await deleteDoc(doc(db_fire, 'reportes', id));
+  db.reportes = db.reportes.filter(r => r.id !== id);
+  renderBadgeReportes();
+  renderReportes();
+  toast('Reporte descartado.', 'info');
+}
+
+function exportarReportes() {
+  const reportadas = [...new Set((db.reportes||[]).map(r => r.questaoId))];
+  const questoes = db.questoes.filter(q => reportadas.includes(q.id));
+  if (!questoes.length) { toast('Nenhuma questao reportada!', 'info'); return; }
+  const formato = 'json';
+  const data = questoes.map(q => ({
+    codigo: q.codigo, enunciado: q.enunciado,
+    opcoes: q.opcoes, gabarito: q.gabarito,
+    assunto: q.assunto, topico: q.topico,
+    banca: q.banca, ano: q.ano, comentario: q.comentario,
+    status: q.status, motivo_status: q.motivo_status,
+    reportes: db.reportes.filter(r => r.questaoId === q.id).map(r => ({ tipo: r.tipo, descricao: r.descricao }))
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `reportadas_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  toast(`${questoes.length} questoes exportadas!`);
+}
+
+// ============================================================
+// STATUS DE QUESTÕES
+// ============================================================
+function abrirStatusQuestao(id) {
+  const q = db.questoes.find(q => q.id === id);
+  if (!q) return;
+  document.getElementById('status-questao-id').value = id;
+  document.getElementById('status-questao-valor').value = q.status || 'ativa';
+  document.getElementById('status-questao-motivo').value = q.motivo_status || '';
+  document.getElementById('modal-status-questao').classList.add('show');
+}
+
+async function salvarStatusQuestao() {
+  const id = document.getElementById('status-questao-id').value;
+  const status = document.getElementById('status-questao-valor').value;
+  const motivo = document.getElementById('status-questao-motivo').value.trim();
+  const q = db.questoes.find(q => q.id === id);
+  if (!q) return;
+  const { db_fire, doc, updateDoc } = window._fire;
+  const snapshot = { ...q, _snapshot_em: Date.now() };
+  const historico = [...(q.historico || []), snapshot];
+  await updateDoc(doc(db_fire, 'questoes', id), { status, motivo_status: motivo, historico, atualizada_em: Date.now(), atualizada_por: window._currentUser?.email });
+  q.status = status; q.motivo_status = motivo; q.historico = historico;
+  document.getElementById('modal-status-questao').classList.remove('show');
+  renderBanco();
+  toast('Status atualizado!');
+  // Alerta para questoes relacionadas
+  if (status === 'desatualizada' && q.relacionadas?.length) {
+    const relacionadasNomes = q.relacionadas.map(c => {
+      const rel = db.questoes.find(x => x.codigo === c);
+      return rel ? `${c} — ${rel.enunciado?.slice(0,60)}...` : c;
+    });
+    setTimeout(() => {
+      if (confirm(`⚠️ ATENÇÃO: A questão ${q.codigo} está relacionada a ${q.relacionadas.length} outra(s) questão(ões) que podem também estar desatualizadas:
+
+${relacionadasNomes.join('
+')}
+
+Deseja visualizá-las no banco?`)) {
+        document.getElementById('filter-status').value = '';
+        document.getElementById('search-banco').value = q.relacionadas[0];
+        showTab('banco');
+        renderBanco();
+      }
+    }, 400);
+  }
+}
+
+// ============================================================
+// DUPLICAR QUESTÃO
+// ============================================================
+async function duplicarQuestao(id) {
+  const q = db.questoes.find(q => q.id === id);
+  if (!q) return;
+  const nova = { ...q, id: genId(), codigo: gerarCodigoBAP(), status: 'rascunho', fonte: 'manual', createdAt: Date.now(), historico: [], provaId: null };
+  delete nova.historico;
+  await salvarQuestaoFirestore(nova);
+  toast('Questao duplicada como rascunho!');
+  renderBanco();
+}
+
+// ============================================================
+// EXPORTAÇÃO UNIFICADA
+// ============================================================
+function abrirExportar() {
+  const selA = document.getElementById('exp-assunto');
+  const selC = document.getElementById('exp-concurso');
+  const selAno = document.getElementById('exp-ano');
+  if (selA) {
+    selA.innerHTML = '<option value="">Todas</option>' + ASSUNTOS.map(a => `<option value="${a}">${a}</option>`).join('');
+    selA.onchange = () => { atualizarTopicoExp(); atualizarPreviewExportacao(); };
+  }
+  if (selC) selC.innerHTML = '<option value="">Todos</option>' + CONCURSOS.map(c => `<option value="${c}">${c}</option>`).join('');
+  const anos = [...new Set(db.questoes.map(q=>q.ano).filter(Boolean))].sort((a,b)=>b-a);
+  if (selAno) selAno.innerHTML = '<option value="">Todos</option>' + anos.map(a=>`<option value="${a}">${a}</option>`).join('');
+  // Eventos de preview
+  ['exp-topico','exp-concurso','exp-status','exp-ano','exp-especial'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.onchange = atualizarPreviewExportacao;
+  });
+  document.getElementById('modal-exportar').classList.add('show');
+  atualizarTopicoExp();
+  atualizarPreviewExportacao();
+}
+
+function atualizarTopicoExp() {
+  const assunto = document.getElementById('exp-assunto')?.value || '';
+  const sel = document.getElementById('exp-topico');
+  if (!sel) return;
+  const topicos = assunto ? [...new Set(db.questoes.filter(q=>q.assunto===assunto).map(q=>q.topico).filter(Boolean))].sort() : [];
+  sel.innerHTML = '<option value="">Todos</option>' + topicos.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+
+function atualizarPreviewExportacao() {
+  const pool = getPoolExportacao();
+  const el = document.getElementById('exp-preview-count');
+  if (el) el.textContent = `${pool.length} questao(es) selecionada(s) para exportar.`;
+}
+
+function getPoolExportacao() {
+  const assunto = document.getElementById('exp-assunto')?.value || '';
+  const topico = document.getElementById('exp-topico')?.value || '';
+  const concurso = document.getElementById('exp-concurso')?.value || '';
+  const status = document.getElementById('exp-status')?.value || '';
+  const ano = document.getElementById('exp-ano')?.value || '';
+  const especial = document.getElementById('exp-especial')?.value || '';
+  const reportadasIds = new Set((db.reportes||[]).map(r=>r.questaoId));
+  return db.questoes.filter(q => {
+    if (assunto && q.assunto !== assunto) return false;
+    if (topico && q.topico !== topico) return false;
+    if (concurso && q.concurso !== concurso) return false;
+    if (status && (q.status||'ativa') !== status) return false;
+    if (ano && String(q.ano) !== String(ano)) return false;
+    if (especial === 'sem_comentario' && q.comentario) return false;
+    if (especial === 'reportadas' && !reportadasIds.has(q.id)) return false;
+    if (especial === 'baixo_acerto') {
+      const s = db.stats[q.id];
+      if (!s || s.total < 5) return false;
+      if ((s.acertos/s.total) >= 0.4) return false;
+    }
+    if (especial === 'alto_acerto') {
+      const s = db.stats[q.id];
+      if (!s || s.total < 5) return false;
+      if ((s.acertos/s.total) < 0.9) return false;
+    }
+    return true;
+  });
+}
+
+function executarExportacao() {
+  const pool = getPoolExportacao();
+  if (!pool.length) { toast('Nenhuma questao encontrada com esses filtros!', 'info'); return; }
+  const formato = document.querySelector('input[name="exp-formato"]:checked')?.value || 'json';
+  if (formato === 'json') {
+    const data = pool.map(q => ({
+      codigo: q.codigo, enunciado: q.enunciado, opcoes: q.opcoes, gabarito: q.gabarito,
+      assunto: q.assunto, topico: q.topico, banca: q.banca, ano: q.ano,
+      area: q.area, concurso: q.concurso, dificuldade: q.dificuldade,
+      comentario: q.comentario, texto_base: q.texto_base,
+      status: q.status, motivo_status: q.motivo_status,
+    }));
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `questoes_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  } else {
+    const headers = ['codigo','enunciado','gabarito','assunto','topico','banca','ano','concurso','status','comentario'];
+    const rows = pool.map(q => headers.map(h => `"${(q[h]||'').toString().replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('
+');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `questoes_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  }
+  toast(`${pool.length} questoes exportadas em ${formato.toUpperCase()}!`);
+  document.getElementById('modal-exportar').classList.remove('show');
+}
+
+// ============================================================
+// TELA DE REVISÃO DE IMPORTAÇÃO
+// ============================================================
+let _revisaoData = [];
+
+function carregarRevisaoImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      _revisaoData = data.map(q => ({ ...q, _status: 'aprovado' }));
+      abrirRevisaoImport();
+    } catch { toast('Arquivo JSON invalido!', 'error'); }
+  };
+  reader.readAsText(file);
+}
+
+function abrirRevisaoImport() {
+  renderRevisaoLista();
+  document.getElementById('modal-revisao-import').classList.add('show');
+}
+
+function renderRevisaoLista() {
+  const lista = document.getElementById('revisao-lista');
+  const stats = document.getElementById('revisao-stats');
+  const resumo = document.getElementById('revisao-resumo');
+  if (!lista) return;
+  const aprovados = _revisaoData.filter(q => q._status === 'aprovado').length;
+  const ignorados = _revisaoData.filter(q => q._status === 'ignorado').length;
+  if (stats) stats.innerHTML = `<span style="color:var(--green)">✅ ${aprovados} aprovados</span> · <span style="color:var(--text-muted)">⏭ ${ignorados} ignorados</span>`;
+  if (resumo) resumo.textContent = `${aprovados} questoes serao salvas no Firestore`;
+  lista.innerHTML = _revisaoData.map((q, idx) => {
+    const qExistente = db.questoes.find(e => e.codigo === q.codigo);
+    const stat = db.stats[qExistente?.id];
+    const taxaAcerto = stat && stat.total > 0 ? Math.round((stat.acertos/stat.total)*100) + '%' : '—';
+    return `<div class="revisao-card ${q._status}" id="revisao-card-${idx}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:var(--blue)">${q.codigo||'—'}</span>
+          <span class="tag tag-gray">${q.assunto||''}</span>
+          ${qExistente?`<span style="font-size:11px;color:var(--text-muted)">Taxa: ${taxaAcerto}</span>`:'<span class="tag tag-blue">Nova</span>'}
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="toggleRevisaoIgnorar(${idx})">${q._status==='ignorado'?'↩ Reativar':'⏭ Ignorar'}</button>
+        </div>
+      </div>
+      <div class="revisao-field">
+        <label>Assunto</label>
+        <select class="form-select" style="font-size:12px;padding:5px 8px" onchange="_revisaoData[${idx}].assunto=this.value">
+          ${ASSUNTOS.map(a=>`<option value="${a}" ${a===q.assunto?'selected':''}>${a}</option>`).join('')}
+        </select>
+      </div>
+      <div class="revisao-field">
+        <label>Topico</label>
+        <input class="form-input" style="font-size:12px;padding:5px 8px" value="${q.topico||''}" onchange="_revisaoData[${idx}].topico=this.value">
+      </div>
+      <div class="revisao-field">
+        <label>Enunciado</label>
+        <textarea class="form-textarea" style="min-height:70px;font-size:12px" onchange="_revisaoData[${idx}].enunciado=this.value">${q.enunciado||''}</textarea>
+      </div>
+      <div class="revisao-field">
+        <label>Comentario</label>
+        <textarea class="form-textarea" style="min-height:60px;font-size:12px;border-left:3px solid var(--green)" onchange="_revisaoData[${idx}].comentario=this.value">${q.comentario||''}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="revisao-field" style="flex:1">
+          <label>Status</label>
+          <select class="form-select" style="font-size:12px;padding:5px 8px" onchange="_revisaoData[${idx}].status=this.value">
+            <option value="ativa" ${(q.status||'ativa')==='ativa'?'selected':''}>Ativa</option>
+            <option value="rascunho" ${q.status==='rascunho'?'selected':''}>Rascunho</option>
+            <option value="desatualizada" ${q.status==='desatualizada'?'selected':''}>Desatualizada</option>
+            <option value="anulada" ${q.status==='anulada'?'selected':''}>Anulada</option>
+          </select>
+        </div>
+        <div class="revisao-field" style="flex:2">
+          <label>Motivo do status</label>
+          <input class="form-input" style="font-size:12px;padding:5px 8px" value="${q.motivo_status||''}" onchange="_revisaoData[${idx}].motivo_status=this.value">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleRevisaoIgnorar(idx) {
+  _revisaoData[idx]._status = _revisaoData[idx]._status === 'ignorado' ? 'aprovado' : 'ignorado';
+  renderRevisaoLista();
+}
+
+async function confirmarRevisaoImport() {
+  const aprovados = _revisaoData.filter(q => q._status === 'aprovado');
+  if (!aprovados.length) { toast('Nenhuma questao aprovada!', 'info'); return; }
+  const { db_fire, doc, updateDoc } = window._fire;
+  let atualizadas = 0, novas = 0;
+  for (const q of aprovados) {
+    const existente = db.questoes.find(e => e.codigo === q.codigo);
+    if (existente) {
+      const snapshot = { ...existente, _snapshot_em: Date.now() };
+      const historico = [...(existente.historico||[]), snapshot];
+      const updates = {
+        enunciado: q.enunciado || existente.enunciado,
+        opcoes: q.opcoes || existente.opcoes,
+        gabarito: q.gabarito || existente.gabarito,
+        assunto: q.assunto || existente.assunto,
+        topico: q.topico || existente.topico,
+        comentario: q.comentario !== undefined ? q.comentario : existente.comentario,
+        texto_base: q.texto_base !== undefined ? q.texto_base : existente.texto_base,
+        status: q.status || existente.status || 'ativa',
+        motivo_status: q.motivo_status || existente.motivo_status || '',
+        historico,
+        atualizada_em: Date.now(),
+        atualizada_por: window._currentUser?.email || 'admin',
+      };
+      await updateDoc(doc(db_fire, 'questoes', existente.id), updates);
+      Object.assign(existente, updates);
+      atualizadas++;
+    } else {
+      // Nova questão
+      const obj = {
+        id: genId(), codigo: q.codigo || gerarCodigoBAP(),
+        enunciado: q.enunciado, opcoes: q.opcoes || {}, gabarito: q.gabarito,
+        assunto: q.assunto || ASSUNTOS[0], topico: q.topico || '',
+        banca: q.banca || '', ano: q.ano || null, dificuldade: q.dificuldade || 'Medio',
+        area: q.area || '', concurso: q.concurso || '',
+        comentario: q.comentario || '', texto_base: q.texto_base || '',
+        status: q.status || 'ativa', motivo_status: q.motivo_status || '',
+        fonte: 'importado', historico: [], createdAt: Date.now(),
+      };
+      await salvarQuestaoFirestore(obj);
+      novas++;
+    }
+  }
+  document.getElementById('modal-revisao-import').classList.remove('show');
+  _revisaoData = [];
+  renderBanco();
+  toast(`${atualizadas} atualizadas, ${novas} novas salvas!`);
+}
+
+// ============================================================
+// TRIAGEM AUTOMÁTICA DE DESATUALIZADAS
+// ============================================================
+function triagemDesatualizadas() {
+  const ANO_CORTE = 2019;
+  const MATERIAS_NORMATIVAS = [
+    'Lei Organica PC-AP (0883/2005)',
+    'Lei 066/1993 - Regime Juridico dos Servidores Civis do AP',
+    'Direito Administrativo', 'Direito Constitucional',
+    'Direito Penal', 'Direito Processual Penal',
+    'Lei Organica PC-AP (0883/2005)'
+  ];
+  const candidatas = db.questoes.filter(q => {
+    if (['desatualizada','anulada'].includes(q.status)) return false;
+    const assuntoNorm = (q.assunto||'').normalize('NFD').replace(/[̀-ͯ]/g,'');
+    const isNormativa = MATERIAS_NORMATIVAS.some(m => assuntoNorm.toLowerCase().includes(m.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().slice(0,15)));
+    const isAtualidades = (q.assunto||'').toLowerCase().includes('atualidade');
+    const anoAntigo = q.ano && q.ano < ANO_CORTE;
+    return (isNormativa && anoAntigo) || isAtualidades;
+  });
+  if (!candidatas.length) { toast('Nenhuma candidata encontrada com os criterios atuais!', 'info'); return; }
+  const resumo = `Encontradas ${candidatas.length} candidatas a revisao:
+
+` +
+    `• ${candidatas.filter(q=>(q.assunto||'').toLowerCase().includes('atualidade')).length} questoes de Atualidades
+` +
+    `• ${candidatas.filter(q=>q.ano&&q.ano<ANO_CORTE).length} questoes normativas com ano < ${ANO_CORTE}
+
+` +
+    `Deseja exportar essas questoes para analise externa?`;
+  if (!confirm(resumo)) return;
+  const data = candidatas.map(q => ({
+    codigo: q.codigo, enunciado: q.enunciado, opcoes: q.opcoes,
+    gabarito: q.gabarito, assunto: q.assunto, topico: q.topico,
+    banca: q.banca, ano: q.ano, comentario: q.comentario,
+    status: q.status, motivo_status: q.motivo_status,
+    _triagem: true, _motivo_triagem: q.ano && q.ano < ANO_CORTE ? `Ano ${q.ano} - verificar atualizacao legal` : 'Atualidades - verificar relevancia'
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `candidatas_desatualizadas_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  toast(`${candidatas.length} candidatas exportadas para revisao!`);
 }
 
 function abrirTransformarSimulado(provaId) {
