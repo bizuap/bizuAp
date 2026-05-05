@@ -1355,6 +1355,10 @@ Exemplos:
       </div>
     </div>
     <div class="form-group" style="margin-bottom:10px">
+      <label>Texto de Apoio <span style="font-size:11px;color:var(--text-muted);font-weight:400">(opcional — exibido antes do enunciado quando existir)</span></label>
+      <textarea class="form-textarea" id="edit-q-texto-base" style="min-height:70px" placeholder="Cole aqui o texto base compartilhado entre questões (ex: texto de leitura, enunciado de situação)..."></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
       <label>Enunciado</label>
       <textarea class="form-textarea" id="edit-q-enunciado" style="min-height:100px"></textarea>
     </div>
@@ -2468,6 +2472,7 @@ function renderTecQuestao() {
         </div>
       </div>
       <div class="tec-q-body">
+        ${q.texto_base ? `<div style="background:var(--surface);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text-mid);line-height:1.65;white-space:pre-wrap"><span style="display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--blue);margin-bottom:6px">📄 Texto de Apoio</span>${q.texto_base}</div>` : ''}
         <p class="tec-q-enunciado">${q.enunciado}</p>
         <div id="tec-opcoes">${opcoesHTML}</div>
         ${!jaRespondida ? `<div class="tec-actions">
@@ -3542,6 +3547,14 @@ async function confirmarImport() {
   Object.keys(db.topicos).forEach(a => db.topicos[a]);
   localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
 
+  // Registra concursos novos automaticamente
+  for (const q of novas) {
+    const conc = q.concurso || '';
+    if (conc && !CONCURSOS.includes(conc)) CONCURSOS.push(conc);
+  }
+  CONCURSOS = [...new Set(CONCURSOS)].sort();
+  localStorage.setItem('pt_concursos', JSON.stringify(CONCURSOS));
+
   // Salva as questões
   const letrasMap = ['A','B','C','D','E'];
   // Salva prova se configurado
@@ -3555,10 +3568,10 @@ async function confirmarImport() {
     const { db_fire, doc, setDoc, serverTimestamp } = window._fire;
     await setDoc(doc(db_fire, 'provas', provaId), {
       nome: nomeProva, ano: anoProva, tempo: tempoProva,
-      totalQuestoes: novas.length, criadoEm: serverTimestamp()
+      totalQuestoes: novas.length, criadoEm: serverTimestamp(), tipo: 'importado'
     });
     if (!db.provas) db.provas = [];
-    db.provas.push({ id: provaId, nome: nomeProva, ano: anoProva, tempo: tempoProva, totalQuestoes: novas.length });
+    db.provas.push({ id: provaId, nome: nomeProva, ano: anoProva, tempo: tempoProva, totalQuestoes: novas.length, tipo: 'importado' });
   }
   let saved = 0;
   for (const q of novas) {
@@ -3583,6 +3596,7 @@ async function confirmarImport() {
       area: q.area || '',
       concurso: q.concurso || '',
       comentario: q.comentario || '',
+      texto_base: q.texto_base || '',
       fonte: 'importado',
       provaId: provaId || null,
       createdAt: Date.now(),
@@ -3632,6 +3646,7 @@ function abrirEditarQuestao(id) {
   document.getElementById('edit-q-banca').value = q.banca || '';
   document.getElementById('edit-q-ano').value = q.ano || '';
   document.getElementById('edit-q-comentario').value = q.comentario || '';
+  document.getElementById('edit-q-texto-base').value = q.texto_base || '';
   document.getElementById('edit-q-dificuldade').value = q.dificuldade || 'Médio';
   // Área e Concurso
   const selArea = document.getElementById('edit-q-area');
@@ -3684,6 +3699,7 @@ async function salvarEdicaoQuestao() {
     area: document.getElementById('edit-q-area').value.trim(),
     concurso: document.getElementById('edit-q-concurso').value.trim(),
     comentario: document.getElementById('edit-q-comentario').value.trim(),
+    texto_base: document.getElementById('edit-q-texto-base').value.trim(),
   };
   await updateDoc(doc(db_fire, 'questoes', id), updates);
   const idx = db.questoes.findIndex(q => q.id === id);
@@ -3929,7 +3945,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, verRankingSimulado, gerarCardRanking, verResultadoSimulado,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -4017,15 +4033,64 @@ function renderSimulados() {
     </div>`;
   }
 
+  function cardProvaOficial(p) {
+    const hist = (db.historico_simulados || []).find(h => h.provaId === p.id);
+    const horas = Math.floor((p.tempo||180)/60);
+    const mins = (p.tempo||180)%60;
+    const metaStr = `${p.totalQuestoes||0} questões · ${horas>0?horas+'h':''}${mins>0?mins+'min':horas===0?'—':''}${p.ano?' · '+p.ano:''}${p.banca?' · '+p.banca:''}`;
+    // Botões visíveis para todos
+    const btnsAluno = `
+      ${hist ? `<button class="btn btn-ghost btn-sm" onclick="verResultadoSimulado('${p.id}')">📊 Ver Resultado</button>` : ''}
+      <button class="btn btn-primary btn-sm" onclick="iniciarSimuladoTela('${p.id}')">▶ ${hist?'Refazer':'Iniciar'}</button>`;
+    // Zona admin
+    const zonaAdmin = isAdm ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;letter-spacing:.3px">🔑 Opções do administrador</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>
+          <button class="btn btn-ghost btn-sm" style="background:var(--blue-light,#eff6ff);color:var(--blue);border-color:var(--blue)" onclick="abrirTransformarSimulado('${p.id}')">⚙ Transformar em Simulado</button>
+          <button class="btn btn-danger btn-sm" onclick="excluirProva('${p.id}')">🗑</button>
+        </div>
+        <div id="transform-preview-${p.id}" style="display:none;margin-top:10px;background:var(--surface);border:0.5px dashed var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">⚙ Configurar como Simulado</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+            <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Nome</label>
+              <input class="form-input" style="font-size:12px;padding:5px 8px" id="tp-nome-${p.id}" value="${p.nome}"></div>
+            <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Tempo (min)</label>
+              <input class="form-input" type="number" style="font-size:12px;padding:5px 8px" id="tp-tempo-${p.id}" value="${p.tempo||180}"></div>
+            <div><label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Data limite rank</label>
+              <input class="form-input" type="datetime-local" style="font-size:12px;padding:5px 8px" id="tp-prazo-${p.id}"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Questões incluídas</div>
+          <div id="tp-questoes-${p.id}" style="max-height:200px;overflow-y:auto"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-primary btn-sm" onclick="salvarTransformacao('${p.id}')">💾 Salvar como Simulado</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('transform-preview-${p.id}').style.display='none'">Cancelar</button>
+          </div>
+        </div>
+      </div>` : '';
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:10px;background:var(--card)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${p.nome}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px">${metaStr}</div>
+          ${hist ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Realizado — ${hist.acertos}/${p.totalQuestoes} acertos</div>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${btnsAluno}</div>
+      </div>
+      ${zonaAdmin}
+    </div>`;
+  }
+
   let html = btnMontar;
 
   if (personalizados.length) {
-    html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">🎯 Simulados Personalizados</div>`;
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">🎖 Simulados do Papiro Tático</div>`;
     html += personalizados.map(cardProva).join('');
   }
   if (oficiais.length) {
-    html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin:${personalizados.length?'16px':0} 0 8px">📋 Provas Oficiais</div>`;
-    html += oficiais.map(cardProva).join('');
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin:${personalizados.length?'16px':0} 0 8px">📋 Provas Anteriores</div>`;
+    html += oficiais.map(cardProvaOficial).join('');
   }
   if (!provas.length) {
     html += `<div class="empty-state"><div class="empty-icon">🎯</div><h3>Nenhum simulado disponível</h3><p>Monte um simulado ou importe questões com "Disponibilizar como Simulado".</p></div>`;
@@ -4430,6 +4495,51 @@ async function salvarSimulado() {
   db.provas.push({ id: provaId, ...dadosProva });
   toast('Simulado salvo com sucesso! ✅', 'success');
   window._simRascunho = null;
+  renderSimulados();
+}
+
+function abrirTransformarSimulado(provaId) {
+  const preview = document.getElementById('transform-preview-' + provaId);
+  if (!preview) return;
+  const isOpen = preview.style.display !== 'none';
+  if (isOpen) { preview.style.display = 'none'; return; }
+  // Monta lista de questões
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  const questoes = db.questoes.filter(q => q.provaId === provaId);
+  const container = document.getElementById('tp-questoes-' + provaId);
+  if (container) {
+    container.innerHTML = questoes.length
+      ? questoes.map((q,i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-muted);width:20px">${i+1}</span>
+          <span style="flex:1;font-size:12px;color:var(--text-mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${q.enunciado||''}</span>
+          <span style="font-size:11px;color:var(--text-muted)">${q.assunto||''}</span>
+        </div>`).join('')
+      : '<p style="font-size:12px;color:var(--text-muted)">Nenhuma questão vinculada a esta prova.</p>';
+  }
+  preview.style.display = 'block';
+}
+
+async function salvarTransformacao(provaId) {
+  const nome = document.getElementById('tp-nome-' + provaId)?.value.trim();
+  const tempo = parseInt(document.getElementById('tp-tempo-' + provaId)?.value) || 180;
+  const prazoVal = document.getElementById('tp-prazo-' + provaId)?.value;
+  const prazo = prazoVal ? new Date(prazoVal).getTime() : null;
+  if (!nome) { toast('Digite o nome do simulado!', 'error'); return; }
+  const questoes = db.questoes.filter(q => q.provaId === provaId);
+  if (!questoes.length) { toast('Nenhuma questão vinculada a esta prova!', 'error'); return; }
+  const { db_fire, doc, setDoc, serverTimestamp } = window._fire;
+  const novoId = genId();
+  await setDoc(doc(db_fire, 'provas', novoId), {
+    nome, tempo, totalQuestoes: questoes.length,
+    tipo: 'personalizado',
+    questoesIds: questoes.map(q => ({ id: q.id, peso: 1 })),
+    dataLimiteRank: prazo,
+    criadoEm: serverTimestamp(),
+  });
+  if (!db.provas) db.provas = [];
+  db.provas.push({ id: novoId, nome, tempo, totalQuestoes: questoes.length, tipo: 'personalizado', questoesIds: questoes.map(q=>({id:q.id,peso:1})), dataLimiteRank: prazo });
+  toast('Simulado criado com sucesso!');
   renderSimulados();
 }
 
