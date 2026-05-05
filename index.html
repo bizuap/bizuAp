@@ -1071,6 +1071,33 @@ Exemplos:
         </div>
       </div>
       <div class="form-section">
+        <h3>🤖 Importar PDF com IA</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">A IA extrai as questões do PDF automaticamente. Usa Claude se configurado, senão usa Gemini.</p>
+        <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s" id="pdf-drop-area" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:28px;margin-bottom:8px">📄</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px" id="pdf-label">Arraste o PDF ou clique para selecionar</div>
+          <div style="font-size:12px;color:var(--text-muted)">Formato: .pdf</div>
+          <input type="file" accept=".pdf" id="import-pdf-file" style="display:none" onchange="selecionarPDF(this)">
+        </label>
+        <div id="pdf-info" style="display:none;margin-top:10px;padding:10px 14px;background:var(--surface);border-radius:8px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">📄</span>
+          <span id="pdf-nome" style="flex:1;font-size:13px;color:var(--text)"></span>
+          <button onclick="limparPDF()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px">✕</button>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="btn-extrair-pdf" onclick="extrairPDFcomIA()" style="display:none">🤖 Extrair com IA</button>
+          <span id="pdf-status" style="font-size:12px;color:var(--text-muted)"></span>
+        </div>
+        <div id="pdf-preview" style="display:none;margin-top:16px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px" id="pdf-preview-titulo"></div>
+          <div id="pdf-preview-lista" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="usarJSONdoPDF()">✅ Usar estas questões</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('pdf-preview').style.display='none'">✕ Descartar</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
         <h3>Arquivo JSON</h3>
         <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="font-size:28px;margin-bottom:8px">📂</div>
@@ -3250,6 +3277,154 @@ function startRevisaoQuiz() {
 // =============================================
 // IMPORTAR JSON
 // =============================================
+let _pdfBase64 = null;
+let _pdfNome = '';
+let _pdfJsonExtraido = null;
+
+function selecionarPDF(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _pdfNome = file.name;
+  document.getElementById('pdf-label').textContent = file.name;
+  document.getElementById('pdf-info').style.display = 'flex';
+  document.getElementById('pdf-nome').textContent = file.name;
+  document.getElementById('btn-extrair-pdf').style.display = 'inline-flex';
+  document.getElementById('pdf-status').textContent = '';
+  document.getElementById('pdf-preview').style.display = 'none';
+  // Converte para base64
+  const reader = new FileReader();
+  reader.onload = e => { _pdfBase64 = e.target.result.split(',')[1]; };
+  reader.readAsDataURL(file);
+}
+
+function limparPDF() {
+  _pdfBase64 = null; _pdfNome = ''; _pdfJsonExtraido = null;
+  document.getElementById('import-pdf-file').value = '';
+  document.getElementById('pdf-label').textContent = 'Arraste o PDF ou clique para selecionar';
+  document.getElementById('pdf-info').style.display = 'none';
+  document.getElementById('btn-extrair-pdf').style.display = 'none';
+  document.getElementById('pdf-status').textContent = '';
+  document.getElementById('pdf-preview').style.display = 'none';
+}
+
+async function extrairPDFcomIA() {
+  if (!_pdfBase64) { toast('Selecione um PDF primeiro!', 'error'); return; }
+  const apiKey = db.settings?.apiKey;
+  const geminiKey = db.settings?.geminiKey;
+  if (!apiKey && !geminiKey) { toast('Configure a chave Claude ou Gemini nas Configurações!', 'error'); return; }
+
+  const statusEl = document.getElementById('pdf-status');
+  const btn = document.getElementById('btn-extrair-pdf');
+  btn.disabled = true;
+  statusEl.textContent = '🤖 Analisando PDF...';
+
+  const prompt = `Você é um especialista em concursos públicos brasileiros. Analise este PDF de prova e extraia TODAS as questões.
+
+Para cada questão, retorne um JSON com exatamente este formato:
+{
+  "enunciado": "texto completo da questão",
+  "opcoes": {"A": "texto", "B": "texto", "C": "texto", "D": "texto", "E": "texto"},
+  "gabarito": "A",
+  "assunto": "nome da matéria",
+  "topico": "tópico específico se identificável",
+  "banca": "nome da banca se identificável",
+  "ano": 2023,
+  "dificuldade": "Médio",
+  "comentario": ""
+}
+
+Retorne APENAS um array JSON válido com todas as questões, sem texto adicional, sem markdown, sem explicações.
+Se não houver gabarito no PDF, deixe "gabarito" em branco.`;
+
+  try {
+    let questoes = null;
+
+    if (apiKey) {
+      // Usa Claude
+      statusEl.textContent = '🤖 Usando Claude...';
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 8000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: _pdfBase64 } },
+              { type: 'text', text: prompt }
+            ]
+          }]
+        })
+      });
+      const data = await resp.json();
+      const text = data.content?.[0]?.text || '';
+      const clean = text.replace(/```json|```/g, '').trim();
+      questoes = JSON.parse(clean);
+
+    } else if (geminiKey) {
+      // Usa Gemini
+      statusEl.textContent = '🤖 Usando Gemini...';
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [
+            { inline_data: { mime_type: 'application/pdf', data: _pdfBase64 } },
+            { text: prompt }
+          ]}],
+          generationConfig: { temperature: 0.1 }
+        })
+      });
+      const data = await resp.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const clean = text.replace(/```json|```/g, '').trim();
+      questoes = JSON.parse(clean);
+    }
+
+    if (!questoes || !questoes.length) throw new Error('Nenhuma questão extraída');
+
+    _pdfJsonExtraido = questoes;
+    mostrarPreviewPDF(questoes);
+    statusEl.textContent = `✅ ${questoes.length} questões extraídas!`;
+
+  } catch(e) {
+    console.error(e);
+    statusEl.textContent = '❌ Erro ao extrair. Verifique se o PDF contém texto selecionável.';
+    toast('Erro ao extrair PDF. Tente um PDF com texto copiável.', 'error');
+  }
+  btn.disabled = false;
+}
+
+function mostrarPreviewPDF(questoes) {
+  const preview = document.getElementById('pdf-preview');
+  const titulo = document.getElementById('pdf-preview-titulo');
+  const lista = document.getElementById('pdf-preview-lista');
+  preview.style.display = 'block';
+  titulo.textContent = `${questoes.length} questões extraídas — revise antes de importar:`;
+  lista.innerHTML = questoes.map((q, i) => `
+    <div style="border:0.5px solid var(--border);border-radius:8px;padding:10px 14px;background:var(--surface)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;color:var(--text-muted)">${i+1}.</span>
+        ${q.assunto?`<span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:1px 7px;border-radius:999px">${q.assunto.substring(0,30)}</span>`:''}
+        ${q.topico?`<span style="font-size:10px;background:var(--surface);color:var(--text-muted);padding:1px 7px;border-radius:999px;border:0.5px solid var(--border)">${q.topico.substring(0,25)}</span>`:''}
+        ${q.gabarito?`<span style="font-size:10px;font-weight:700;color:#3B6D11;background:#EAF3DE;padding:1px 7px;border-radius:999px">Gab: ${q.gabarito}</span>`:'<span style="font-size:10px;color:#A32D2D;background:#FCEBEB;padding:1px 7px;border-radius:999px">Sem gabarito</span>'}
+      </div>
+      <div style="font-size:13px;color:var(--text);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.enunciado||''}</div>
+    </div>`).join('');
+}
+
+function usarJSONdoPDF() {
+  if (!_pdfJsonExtraido) return;
+  const jsonStr = JSON.stringify(_pdfJsonExtraido, null, 2);
+  const textarea = document.getElementById('import-json-text');
+  if (textarea) { textarea.value = jsonStr; }
+  document.getElementById('pdf-preview').style.display = 'none';
+  toast(`${_pdfJsonExtraido.length} questões prontas para importar! Clique em Validar.`, 'success');
+  // Scroll para a seção JSON
+  document.getElementById('import-json-text')?.scrollIntoView({ behavior: 'smooth' });
+}
+
 function lerArquivoJSON(input) {
   const file = input.files[0];
   if (!file) return;
@@ -3793,7 +3968,7 @@ Object.assign(window, {
   confirmarResposta, proximaQuestao, skipQuestion, mostrarResultado,
   setGabarito, salvarQuestaoManual, limparForm,
   renderInicio, renderStats, renderRevisao, startRevisaoQuiz,
-  lerArquivoJSON, validarImport, confirmarImport,
+  lerArquivoJSON, validarImport, confirmarImport, selecionarPDF, limparPDF, extrairPDFcomIA, mostrarPreviewPDF, usarJSONdoPDF,
   abrirEditarComentario, salvarComentarioEditado,
   abrirEditarQuestao, fecharEditarQuestao, setEditGabarito, salvarEdicaoQuestao,
   excluirQuestao, apagarPorFonte, apagarTodasQuestoes,
