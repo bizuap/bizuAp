@@ -784,6 +784,10 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
       <div><h2>📚 Banco de Questões</h2><p id="banco-count">Nenhuma questão cadastrada</p></div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm admin-only" style="display:none" onclick="showTab('cadastrar')">➕ Cadastrar</button>
+        <button class="btn btn-ghost btn-sm admin-only" style="display:none" onclick="abrirExportar()">📤 Exportar</button>
+        <button class="btn btn-ghost btn-sm admin-only" style="display:none" onclick="document.getElementById('import-revisao-file').click()">📥 Importar com Revisão</button>
+        <input type="file" id="import-revisao-file" accept=".json" style="display:none" onchange="carregarRevisaoImport(this)">
+        <button class="btn btn-ghost btn-sm admin-only" style="display:none;color:#d97706;border-color:#d97706" onclick="triagemDesatualizadas()">🔍 Triagem</button>
         <button class="btn btn-primary btn-sm" onclick="startQuizFromFilter()">▶ Responder Filtro</button>
       </div>
     </div>
@@ -1167,13 +1171,7 @@ Exemplos:
   <!-- ADMIN -->
   <div class="tab-content" id="tab-admin">
     <div class="page-header">
-      <div><h2>👑 Painel Admin</h2><p>Gerencie alunos, questões e reportes</p></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary btn-sm" onclick="abrirExportar()">📤 Exportar Questões</button>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('import-revisao-file').click()">📥 Importar com Revisão</button>
-        <input type="file" id="import-revisao-file" accept=".json" style="display:none" onchange="carregarRevisaoImport(this)">
-        <button class="btn btn-ghost btn-sm" style="color:#d97706;border-color:#d97706" onclick="triagemDesatualizadas()">🔍 Triagem Desatualizadas</button>
-      </div>
+      <div><h2>👑 Painel Admin</h2><p>Gerencie alunos, códigos de acesso e reportes</p></div>
     </div>
     <div class="page-body">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px">
@@ -1651,7 +1649,7 @@ Exemplos:
         </div>
         <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
           <div style="background:var(--blue-light);padding:10px 14px;border-bottom:1px solid var(--border)">
-            <div style="font-size:12px;font-weight:700;color:var(--blue)">v2.0 — ${new Date().toLocaleDateString('pt-BR')}</div>
+            <div style="font-size:12px;font-weight:700;color:var(--blue)">v2.0 — 05/05/2026</div>
             <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Sessão atual</div>
           </div>
           <div style="padding:12px 14px;font-size:12px;color:var(--text);line-height:1.8">
@@ -1684,20 +1682,60 @@ Exemplos:
       <div style="margin-bottom:20px">
         <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📚 Documentação</p>
         <div style="display:flex;flex-direction:column;gap:8px">
-          ${[
-            {titulo:'Campos de uma Questão', conteudo:'<code>codigo</code> (Q00001) · <code>enunciado</code> · <code>opcoes</code> {A-E} · <code>gabarito</code> · <code>assunto</code> · <code>topico</code> · <code>banca</code> · <code>ano</code> · <code>dificuldade</code> · <code>area</code> · <code>concurso</code> · <code>comentario</code> · <code>texto_base</code> · <code>status</code> (ativa/rascunho/desatualizada/anulada) · <code>motivo_status</code> · <code>historico[]</code> · <code>fonte</code> (manual/ia/importado) · <code>provaId</code> · <code>createdAt</code>'},
-            {titulo:'Fontes de Questões', conteudo:'<b>Manual:</b> Admin preenche formulário na aba Cadastrar.<br><b>IA:</b> Geração automática via API Claude/Gemini na aba Gerar.<br><b>Importado:</b> Via JSON ou PDF+IA na aba Importar.'},
-            {titulo:'Tipos de Prova/Simulado', conteudo:'<b>importado:</b> Criado via import JSON com "Disponibilizar como Simulado". Aparece em Provas Anteriores.<br><b>personalizado:</b> Montado pelo admin ou transformado de uma prova. Aparece em Simulados do Papiro Tático.'},
-            {titulo:'Exportação de Questões', conteudo:'Botão "Exportar Questões" no admin. Filtros: matéria, tópico, concurso, status, ano, sem comentário, reportadas, taxa de acerto. Formatos: JSON (para reimportar) e CSV (para análise).'},
-            {titulo:'Tela de Revisão de Importação', conteudo:'Após exportar, corrigir externamente e reimportar, abre a tela de revisão. Cada questão pode ser aprovada, editada ou ignorada. Todos os campos são editáveis incluindo assunto e tópico. Só os aprovados são salvos via updateDoc no Firestore.'},
-            {titulo:'Sistema de Reportes', conteudo:'Alunos reportam problemas via botão 🚩 no modo TEC. Admin visualiza, exporta e resolve no painel Admin. Questões reportadas podem ser exportadas para análise externa.'},
-            {titulo:'Status de Questões', conteudo:'<b>ativa:</b> Aparece no pool TEC e simulados.<br><b>rascunho:</b> Visível só para admin, fora do pool.<br><b>desatualizada:</b> Fora do pool, admin pode adaptar/atualizar.<br><b>anulada:</b> Fora do pool, preservada no histórico.'},
-          ].map(({titulo,conteudo}) => `
-            <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-              <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">${titulo}</summary>
-              <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">${conteudo}</div>
-            </details>
-          `).join('')}
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Campos de uma Questão</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <code>codigo</code> (Q00001) · <code>enunciado</code> · <code>opcoes</code> {A-E} · <code>gabarito</code> · <code>assunto</code> · <code>topico</code> · <code>banca</code> · <code>ano</code> · <code>dificuldade</code> · <code>area</code> · <code>concurso</code> · <code>comentario</code> · <code>texto_base</code> · <code>status</code> (ativa/rascunho/desatualizada/anulada) · <code>motivo_status</code> · <code>historico[]</code> · <code>relacionadas[]</code> · <code>fonte</code> (manual/ia/importado) · <code>provaId</code> · <code>atualizada_em</code> · <code>atualizada_por</code> · <code>createdAt</code>
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Fontes de Questões</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>Manual:</b> Admin preenche formulário na aba Cadastrar.<br>
+              <b>IA:</b> Geração automática via API Claude/Gemini na aba Gerar.<br>
+              <b>Importado:</b> Via JSON ou PDF+IA na aba Importar.
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Tipos de Prova/Simulado</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>importado:</b> Criado via import JSON. Aparece em Provas Anteriores na aba Simulados.<br>
+              <b>personalizado:</b> Montado pelo admin ou transformado de prova. Aparece em Simulados do Papiro Tático.
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Exportação de Questões</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              Botão "Exportar Questões" no Banco de Questões (admin). Filtros: matéria, tópico, concurso, status, ano, sem comentário, reportadas, taxa de acerto. Formatos: JSON (para reimportar) e CSV (para análise no Excel/Sheets).
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Tela de Revisão de Importação</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              Após exportar, corrigir externamente e reimportar, abre a tela de revisão. Cada questão pode ser aprovada, editada ou ignorada. Todos os campos são editáveis incluindo assunto e tópico. Só os aprovados são salvos via updateDoc no Firestore.
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Sistema de Reportes</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              Alunos reportam problemas via botão 🚩 no modo TEC. Admin visualiza, exporta e resolve no Painel Admin. Questões reportadas podem ser exportadas para análise externa.
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Status de Questões</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>ativa:</b> Aparece no pool TEC e simulados.<br>
+              <b>rascunho:</b> Visível só para admin, fora do pool.<br>
+              <b>desatualizada:</b> Fora do pool, admin pode adaptar/atualizar via exportação externa.<br>
+              <b>anulada:</b> Fora do pool, versão original preservada no histórico.
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Questões Relacionadas</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              Campo no modal de edição — informe códigos separados por vírgula (ex: Q00001, Q00002). Quando uma questão relacionada é marcada como desatualizada, o sistema exibe um alerta sugerindo revisar as demais.
+            </div>
+          </details>
         </div>
       </div>
 
@@ -1705,18 +1743,66 @@ Exemplos:
       <div style="margin-bottom:20px">
         <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🎓 Tutoriais</p>
         <div style="display:flex;flex-direction:column;gap:8px">
-          ${[
-            {titulo:'Como importar uma prova completa', conteudo:'1. Vá para a aba <b>Importar</b><br>2. Cole o JSON das questões ou faça upload<br>3. Preencha nome da prova, ano e tempo<br>4. Marque "Disponibilizar como Simulado" se quiser<br>5. Clique em Validar e depois Confirmar'},
-            {titulo:'Como gerar comentários em lote', conteudo:'1. No <b>Painel Admin</b>, clique em "Exportar Questões"<br>2. Filtre por "Sem comentário" e exporte em JSON<br>3. Traga o JSON para o chat com Claude<br>4. Claude gera os comentários para cada questão<br>5. Reimporte o JSON e use a Tela de Revisão para aprovar'},
-            {titulo:'Como revisar uma prova mensalmente', conteudo:'1. No <b>Painel Admin</b>, clique em "Exportar Questões"<br>2. Filtre por matéria e/ou tópico desejado<br>3. Exporte em JSON e traga para o chat<br>4. Claude revisa: conteúdo, gabarito, atualização legal<br>5. Reimporte e revise na Tela de Revisão'},
-            {titulo:'Como resolver um reporte de aluno', conteudo:'1. No <b>Painel Admin</b>, acesse o painel Reportes<br>2. Leia o problema reportado<br>3. Clique em "Revisar Questão" para abrir direto no banco<br>4. Use "Alterar Status" ou "Editar" para corrigir<br>5. Marque o reporte como Resolvido'},
-            {titulo:'Como marcar uma questão como desatualizada', conteudo:'1. No <b>Banco de Questões</b>, localize a questão<br>2. Clique em "⚠️ Status" na questão<br>3. Selecione "Desatualizada" e explique o motivo<br>4. A questão sai do pool TEC automaticamente<br>5. Para adaptar/atualizar, exporte e traga para o chat'},
-          ].map(({titulo,conteudo}) => `
-            <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-              <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">${titulo}</summary>
-              <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">${conteudo}</div>
-            </details>
-          `).join('')}
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como importar uma prova completa</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. Vá para a aba <b>Importar</b><br>
+              2. Cole o JSON das questões ou faça upload do arquivo<br>
+              3. Preencha nome da prova, ano e tempo<br>
+              4. Marque "Disponibilizar como Simulado" se quiser<br>
+              5. Clique em Validar e depois Confirmar
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como gerar comentários em lote</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. No <b>Banco de Questões</b>, clique em "Exportar Questões"<br>
+              2. Filtre por "Sem comentário" e exporte em JSON<br>
+              3. Traga o JSON para o chat com Claude<br>
+              4. Claude gera os comentários para cada questão<br>
+              5. Reimporte com o botão "Importar com Revisão" e aprove questão por questão
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como revisar uma prova mensalmente</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. No <b>Banco de Questões</b>, clique em "Exportar Questões"<br>
+              2. Filtre por matéria e/ou tópico desejado<br>
+              3. Exporte em JSON e traga para o chat com Claude<br>
+              4. Claude revisa: conteúdo, gabarito, atualização legal<br>
+              5. Reimporte com "Importar com Revisão" e aprove as correções
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como resolver um reporte de aluno</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. No <b>Painel Admin</b>, acesse o painel Reportes<br>
+              2. Leia o problema reportado pelo aluno<br>
+              3. Clique em "Revisar Questão" para abrir direto no banco<br>
+              4. Use "Alterar Status" ou "Editar" para corrigir<br>
+              5. Marque o reporte como Resolvido
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como marcar uma questão como desatualizada</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. No <b>Banco de Questões</b>, localize a questão<br>
+              2. Clique em "⚠️ Status" na questão<br>
+              3. Selecione "Desatualizada" e explique o motivo<br>
+              4. A questão sai do pool TEC automaticamente<br>
+              5. Para adaptar/atualizar, exporte e traga para o chat com Claude
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como usar a Triagem de Desatualizadas</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. No <b>Banco de Questões</b>, clique em "Triagem Desatualizadas"<br>
+              2. O sistema identifica candidatas por matéria + ano automaticamente<br>
+              3. Confirme para exportar o JSON com as candidatas<br>
+              4. Traga para o chat com Claude para análise<br>
+              5. Reimporte as corrigidas com "Importar com Revisão"
+            </div>
+          </details>
         </div>
       </div>
     </div>
