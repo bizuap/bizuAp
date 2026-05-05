@@ -692,6 +692,9 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
       <span class="icon">📥</span><span>Importar JSON</span>
     </div>
     <div class="nav-section-label">Análise</div>
+    <div class="nav-item" onclick="showTab('simulados')">
+      <span class="icon">🎯</span><span>Simulados</span>
+    </div>
     <div class="nav-item" onclick="showTab('stats')">
       <span class="icon">📊</span><span>Estatísticas</span>
     </div>
@@ -1033,6 +1036,30 @@ Exemplos:
     </div>
     <div class="page-body" style="max-width:700px">
       <div class="form-section">
+        <h3>📋 Configurações da Prova (opcional)</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="form-group">
+            <label>Nome da Prova</label>
+            <input class="form-input" id="import-nome-prova" placeholder="Ex: PC-AP 2023 - Agente de Polícia" style="font-size:13px">
+          </div>
+          <div class="form-group">
+            <label>Ano</label>
+            <input class="form-input" id="import-ano-prova" placeholder="2023" type="number" style="font-size:13px">
+          </div>
+          <div class="form-group">
+            <label>Tempo (minutos)</label>
+            <input class="form-input" id="import-tempo-prova" placeholder="240" type="number" style="font-size:13px">
+          </div>
+          <div class="form-group">
+            <label>Disponibilizar como Simulado?</label>
+            <select class="form-select" id="import-simulado" style="font-size:13px">
+              <option value="nao">Não — apenas banco de questões</option>
+              <option value="sim">Sim — disponibilizar como simulado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
         <h3>Arquivo JSON</h3>
         <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="font-size:28px;margin-bottom:8px">📂</div>
@@ -1215,6 +1242,15 @@ Exemplos:
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+
+  <!-- SIMULADOS -->
+  <div class="tab-content" id="tab-simulados">
+    <div class="page-header"><div><h2>🎯 Simulados</h2><p>Realize provas completas no tempo oficial</p></div></div>
+    <div class="page-body" id="simulados-body">
+      <div id="simulados-lista"></div>
     </div>
   </div>
 
@@ -1669,6 +1705,15 @@ function isAdmin() {
 }
 
 // Carrega questões do Firestore
+async function carregarProvas() {
+  const { db_fire, collection, getDocs } = window._fire;
+  try {
+    const snap = await getDocs(collection(db_fire, 'provas'));
+    db.provas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) { db.provas = []; }
+  db.historico_simulados = JSON.parse(localStorage.getItem('pt_historico_sim') || '[]');
+}
+
 async function carregarQuestoes() {
   const { db_fire, collection, getDocs } = window._fire;
   const snap = await getDocs(collection(db_fire, 'questoes'));
@@ -1909,6 +1954,7 @@ function showTab(tab) {
   if (tab === 'importar') document.getElementById('import-preview').innerHTML = '';
   if (tab === 'admin') { carregarAdmin(); carregarCodigos(); }
   if (tab === 'config') { showSettingsTab('materias'); renderMateriasList(); updateAPIStatus(); }
+  if (tab === 'simulados') { renderSimulados(); }
 }
 
 // =============================================
@@ -1925,6 +1971,7 @@ async function init() {
   }
   // Carrega dados do Firestore
   await carregarQuestoes();
+  await carregarProvas();
   await carregarRespostas();
   updateBadge();
   populateSelects();
@@ -3231,6 +3278,22 @@ async function confirmarImport() {
 
   // Salva as questões
   const letrasMap = ['A','B','C','D','E'];
+  // Salva prova se configurado
+  const nomeProva = document.getElementById('import-nome-prova')?.value.trim();
+  const anoProva = parseInt(document.getElementById('import-ano-prova')?.value) || null;
+  const tempoProva = parseInt(document.getElementById('import-tempo-prova')?.value) || 180;
+  const isSimulado = document.getElementById('import-simulado')?.value === 'sim';
+  let provaId = null;
+  if (nomeProva && isSimulado) {
+    provaId = genId();
+    const { db_fire, doc, setDoc, serverTimestamp } = window._fire;
+    await setDoc(doc(db_fire, 'provas', provaId), {
+      nome: nomeProva, ano: anoProva, tempo: tempoProva,
+      totalQuestoes: novas.length, criadoEm: serverTimestamp()
+    });
+    if (!db.provas) db.provas = [];
+    db.provas.push({ id: provaId, nome: nomeProva, ano: anoProva, tempo: tempoProva, totalQuestoes: novas.length });
+  }
   let saved = 0;
   for (const q of novas) {
     // Normaliza opcoes para formato objeto {A,B,C,D,E}
@@ -3255,6 +3318,7 @@ async function confirmarImport() {
       concurso: q.concurso || '',
       comentario: q.comentario || '',
       fonte: 'importado',
+      provaId: provaId || null,
       createdAt: Date.now(),
     };
     await salvarQuestaoFirestore(obj);
@@ -3599,6 +3663,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -3636,6 +3701,292 @@ function renderMd(text) {
   h = h.split('\n\n').join('<br><br>');
   h = h.split('\n').join('<br>');
   return h;
+}
+
+// =============================================
+// =============================================
+// SIMULADOS
+// =============================================
+let _sim = null; // estado do simulado ativo
+
+function renderSimulados() {
+  const body = document.getElementById('simulados-lista');
+  if (!body) return;
+  // Busca provas cadastradas
+  const provas = db.provas || [];
+  if (!provas.length) {
+    body.innerHTML = `<div class="empty-state"><div class="empty-icon">🎯</div><h3>Nenhum simulado disponível</h3><p>Os simulados são criados ao importar questões com a opção "Disponibilizar como Simulado".</p></div>`;
+    return;
+  }
+  body.innerHTML = provas.map(p => {
+    const hist = (db.historico_simulados || []).filter(h => h.provaId === p.id);
+    const ultimoHist = hist[hist.length-1];
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;background:var(--card)">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--text)">${p.nome}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
+            ${p.totalQuestoes} questões · ${Math.floor(p.tempo/60)}h${p.tempo%60>0?p.tempo%60+'min':''} · ${p.ano||''}
+          </div>
+          ${ultimoHist ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Realizado — ${ultimoHist.acertos}/${p.totalQuestoes} acertos (${Math.round(ultimoHist.acertos/p.totalQuestoes*100)}%)</div>` : ''}
+        </div>
+        <button class="btn btn-primary" onclick="iniciarSimuladoTela('${p.id}')">▶ Iniciar Simulado</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function iniciarSimuladoTela(provaId) {
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  if (!prova) return;
+  const questoes = db.questoes.filter(q => q.provaId === provaId);
+  if (!questoes.length) { toast('Nenhuma questão encontrada para este simulado!', 'error'); return; }
+  const body = document.getElementById('simulados-body');
+  const horas = Math.floor(prova.tempo/60);
+  const mins = prova.tempo%60;
+  body.innerHTML = `
+    <div style="max-width:700px;margin:0 auto">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center">
+        <div style="font-size:48px;margin-bottom:12px">🎯</div>
+        <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">${prova.nome}</h2>
+        <div style="display:flex;justify-content:center;gap:24px;margin:16px 0;flex-wrap:wrap">
+          <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:var(--blue)">${questoes.length}</div><div style="font-size:12px;color:var(--text-muted)">Questões</div></div>
+          <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:var(--blue)">${horas>0?horas+'h':''}${mins>0?mins+'min':''}</div><div style="font-size:12px;color:var(--text-muted)">Tempo</div></div>
+          <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:var(--blue)">${prova.ano||'—'}</div><div style="font-size:12px;color:var(--text-muted)">Ano</div></div>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;line-height:1.6">O cronômetro só inicia quando você clicar em <strong>Iniciar</strong>.<br>Você pode pausar a qualquer momento.</p>
+        <button class="btn btn-primary" style="padding:14px 36px;font-size:16px" onclick="comecarSimulado('${provaId}')">▶ Iniciar Simulado</button>
+        <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="renderSimulados();document.getElementById('simulados-body').innerHTML='<div id=\\'simulados-lista\\'></div>';renderSimulados()">← Voltar</button></div>
+      </div>
+    </div>`;
+}
+
+function comecarSimulado(provaId) {
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  if (!prova) return;
+  const questoes = db.questoes.filter(q => q.provaId === provaId);
+  _sim = {
+    provaId,
+    prova,
+    questoes,
+    respostas: {},
+    idx: 0,
+    iniciado: Date.now(),
+    pausado: false,
+    tempoRestante: prova.tempo * 60,
+    tempoAtivo: 0,
+    pausas: [],
+    pausaInicio: null,
+    interval: null,
+  };
+  _sim.interval = setInterval(tickSimulado, 1000);
+  document.addEventListener('visibilitychange', simVisibilityHandler);
+  renderSimuladoAtivo();
+}
+
+function simVisibilityHandler() {
+  if (!_sim) return;
+  if (document.hidden && !_sim.pausado) pausarSimulado();
+}
+
+function tickSimulado() {
+  if (!_sim || _sim.pausado) return;
+  _sim.tempoRestante--;
+  _sim.tempoAtivo++;
+  const el = document.getElementById('sim-cronometro');
+  if (el) {
+    const h = Math.floor(_sim.tempoRestante/3600);
+    const m = Math.floor((_sim.tempoRestante%3600)/60);
+    const s = _sim.tempoRestante%60;
+    el.textContent = `${h>0?h+':':''}${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if (_sim.tempoRestante <= 300) el.style.color = 'var(--red)';
+    if (_sim.tempoRestante <= 0) { clearInterval(_sim.interval); entregarSimulado(); }
+  }
+}
+
+function pausarSimulado() {
+  if (!_sim || _sim.pausado) return;
+  _sim.pausado = true;
+  _sim.pausaInicio = Date.now();
+  const btn = document.getElementById('sim-btn-pausa');
+  if (btn) btn.textContent = '▶ Retomar';
+  const overlay = document.getElementById('sim-pausa-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function retomarSimulado() {
+  if (!_sim || !_sim.pausado) return;
+  _sim.pausado = false;
+  if (_sim.pausaInicio) {
+    _sim.pausas.push({ duracao: Math.round((Date.now() - _sim.pausaInicio)/1000) });
+    _sim.pausaInicio = null;
+  }
+  const btn = document.getElementById('sim-btn-pausa');
+  if (btn) btn.textContent = '⏸ Pausar';
+  const overlay = document.getElementById('sim-pausa-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function togglePausaSimulado() {
+  if (_sim?.pausado) retomarSimulado(); else pausarSimulado();
+}
+
+function renderSimuladoAtivo() {
+  if (!_sim) return;
+  const q = _sim.questoes[_sim.idx];
+  const total = _sim.questoes.length;
+  const letras = ['A','B','C','D','E'];
+  const resp = _sim.respostas[q.id];
+  const body = document.getElementById('simulados-body');
+  body.innerHTML = `
+    <div style="position:relative">
+      <!-- PAUSA OVERLAY -->
+      <div id="sim-pausa-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+        <div style="font-size:48px">⏸</div>
+        <div style="font-size:22px;font-weight:700;color:#fff">Simulado Pausado</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.6)">Suas respostas estão salvas</div>
+        <button class="btn btn-primary" style="margin-top:8px;padding:12px 32px;font-size:15px" onclick="retomarSimulado()">▶ Retomar</button>
+      </div>
+      <!-- HEADER -->
+      <div style="background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:57px;z-index:9">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">Questão ${_sim.idx+1} de ${total}</div>
+        <div id="sim-cronometro" style="font-size:20px;font-weight:800;color:var(--blue);font-family:'Sora',monospace">--:--</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" id="sim-btn-pausa" onclick="togglePausaSimulado()">⏸ Pausar</button>
+          <button class="btn btn-danger btn-sm" onclick="if(confirm('Entregar o simulado agora?'))entregarSimulado()">⏹ Entregar</button>
+        </div>
+      </div>
+      <!-- QUESTÃO -->
+      <div style="max-width:760px;margin:20px auto;padding:0 16px">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">${q.assunto||''} ${q.topico?'· '+q.topico:''}</div>
+          <p style="font-size:15px;line-height:1.7;color:var(--text);margin-bottom:20px">${q.enunciado}</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${letras.filter(l=>q.opcoes&&q.opcoes[l]).map(l=>`
+              <div onclick="simResponder('${q.id}','${l}')" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:8px;border:1.5px solid ${resp===l?'var(--blue)':'var(--border)'};background:${resp===l?'var(--blue-light)':'var(--card)'};cursor:pointer;transition:all .12s">
+                <span style="font-weight:700;color:${resp===l?'var(--blue)':'var(--text-muted)'};min-width:20px">${l}</span>
+                <span style="font-size:14px;color:var(--text);line-height:1.5">${q.opcoes[l]}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+        <!-- NAVEGAÇÃO -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <button class="btn btn-ghost" onclick="simNavegar(-1)" ${_sim.idx===0?'disabled':''}>← Anterior</button>
+          <div style="font-size:12px;color:var(--text-muted)">${Object.keys(_sim.respostas).length} de ${total} respondidas</div>
+          <button class="btn btn-primary" onclick="simNavegar(1)" ${_sim.idx===total-1?'disabled':''}>Próxima →</button>
+        </div>
+        <!-- GRADE DE QUESTÕES -->
+        <div style="margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px">GRADE DE RESPOSTAS</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            ${_sim.questoes.map((qq,i)=>{
+              const r = _sim.respostas[qq.id];
+              const ativo = i === _sim.idx;
+              return `<div onclick="simIr(${i})" style="width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid ${ativo?'var(--blue)':r?'var(--green)':'var(--border)'};background:${ativo?'var(--blue)':r?'var(--green-light)':'var(--surface)'};color:${ativo?'#fff':r?'var(--green)':'var(--text-muted)'}">${i+1}</div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  tickSimulado();
+}
+
+function simResponder(qId, letra) {
+  if (!_sim || _sim.pausado) return;
+  _sim.respostas[qId] = letra;
+  renderSimuladoAtivo();
+}
+
+function simNavegar(dir) {
+  if (!_sim) return;
+  _sim.idx = Math.max(0, Math.min(_sim.questoes.length-1, _sim.idx+dir));
+  renderSimuladoAtivo();
+}
+
+function simIr(idx) {
+  if (!_sim) return;
+  _sim.idx = idx;
+  renderSimuladoAtivo();
+}
+
+async function entregarSimulado() {
+  if (!_sim) return;
+  clearInterval(_sim.interval);
+  document.removeEventListener('visibilitychange', simVisibilityHandler);
+  const prova = _sim.prova;
+  const questoes = _sim.questoes;
+  let acertos = 0;
+  const detalhes = questoes.map(q => {
+    const resp = _sim.respostas[q.id] || null;
+    const correta = resp === q.gabarito;
+    if (correta) acertos++;
+    return { qId: q.id, resposta: resp, correta, gabarito: q.gabarito };
+  });
+  const totalPausas = _sim.pausas.length;
+  const tempoPausado = _sim.pausas.reduce((s,p)=>s+p.duracao, 0);
+  const pct = Math.round(acertos/questoes.length*100);
+  // Salva histórico
+  const hist = { provaId: prova.id, nome: prova.nome, acertos, total: questoes.length, tempoAtivo: _sim.tempoAtivo, totalPausas, tempoPausado, realizadoEm: Date.now() };
+  if (!db.historico_simulados) db.historico_simulados = [];
+  db.historico_simulados.push(hist);
+  localStorage.setItem('pt_historico_sim', JSON.stringify(db.historico_simulados));
+  // Monta resultado por matéria
+  const porMateria = {};
+  detalhes.forEach(d => {
+    const q = questoes.find(x=>x.id===d.qId);
+    const mat = q?.assunto || 'Geral';
+    if (!porMateria[mat]) porMateria[mat] = { acertos:0, total:0 };
+    porMateria[mat].total++;
+    if (d.correta) porMateria[mat].acertos++;
+  });
+  const hA = Math.floor(_sim.tempoAtivo/3600);
+  const mA = Math.floor((_sim.tempoAtivo%3600)/60);
+  const mP = Math.floor(tempoPausado/60);
+  const body = document.getElementById('simulados-body');
+  body.innerHTML = `
+    <div style="max-width:700px;margin:0 auto;padding:20px 16px">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:52px">${pct>=70?'🏆':pct>=50?'📊':'📚'}</div>
+        <h2 style="font-size:22px;font-weight:800;color:var(--text);margin:8px 0">${prova.nome}</h2>
+        <div style="font-size:48px;font-weight:900;color:${pct>=70?'var(--green)':pct>=50?'#d97706':'var(--red)'}">${pct}%</div>
+        <div style="font-size:15px;color:var(--text-muted)">${acertos} de ${questoes.length} acertos</div>
+      </div>
+      <!-- STATS -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--text)">${hA>0?hA+'h':''}${mA}min</div>
+          <div style="font-size:11px;color:var(--text-muted)">Tempo ativo</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--text)">${totalPausas}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Pausas</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:18px;font-weight:800;color:var(--text)">${mP>0?mP+'min':'—'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Tempo pausado</div>
+        </div>
+      </div>
+      <!-- POR MATÉRIA -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📊 Resultado por Matéria</div>
+        ${Object.entries(porMateria).map(([mat,v])=>{
+          const p = Math.round(v.acertos/v.total*100);
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="color:var(--text)">${mat.split('(')[0].trim()}</span>
+              <span style="color:var(--text-muted)">${v.acertos}/${v.total} (${p}%)</span>
+            </div>
+            <div style="height:6px;background:var(--border);border-radius:3px">
+              <div style="height:6px;background:${p>=70?'var(--green)':p>=50?'#d97706':'var(--red)'};border-radius:3px;width:${p}%"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="text-align:center">
+        <button class="btn btn-primary" onclick="showTab('simulados')">← Voltar aos Simulados</button>
+      </div>
+    </div>`;
+  _sim = null;
 }
 
 // =============================================
