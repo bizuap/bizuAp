@@ -783,9 +783,14 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
           <option value="nao_respondida">Não Respondidas</option>
           <option value="correta">Acertadas</option>
           <option value="errada">Erradas</option>
+          <option value="sem_comentario">Sem Comentário</option>
         </select>
         <button class="btn btn-primary btn-sm" onclick="renderBanco()" style="white-space:nowrap">🔍 Filtrar</button>
         <button class="btn btn-ghost btn-sm" onclick="limparFiltrosBanco()" style="white-space:nowrap">✕ Limpar</button>
+        <div style="display:flex;gap:4px;margin-left:4px">
+          <button id="btn-view-lista" class="btn btn-primary btn-sm" onclick="setBancoView('lista')" style="white-space:nowrap">⊞ Lista</button>
+          <button id="btn-view-arvore" class="btn btn-ghost btn-sm" onclick="setBancoView('arvore')" style="white-space:nowrap">🌳 Árvore</button>
+        </div>
       </div>
       <div class="questions-list" id="banco-list">
         <div class="empty-state">
@@ -2091,6 +2096,89 @@ function toast(msg, type = 'success') {
 // =============================================
 // BANCO
 // =============================================
+let _bancoView = 'lista';
+
+function setBancoView(view) {
+  _bancoView = view;
+  const btnLista = document.getElementById('btn-view-lista');
+  const btnArvore = document.getElementById('btn-view-arvore');
+  if (btnLista) { btnLista.className = view==='lista'?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'; }
+  if (btnArvore) { btnArvore.className = view==='arvore'?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'; }
+  renderBanco();
+}
+
+function renderBancoArvore(list) {
+  const el = document.getElementById('banco-list');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>Nenhuma questão encontrada</h3><p>Tente outros filtros ou adicione questões ao banco</p></div>`;
+    return;
+  }
+  // Agrupa por matéria → tópico
+  const materias = {};
+  list.forEach(q => {
+    const mat = q.assunto || 'Sem matéria';
+    const top = q.topico || 'Sem tópico';
+    if (!materias[mat]) materias[mat] = {};
+    if (!materias[mat][top]) materias[mat][top] = [];
+    materias[mat][top].push(q);
+  });
+
+  const html = Object.entries(materias).map(([mat, topicos], mi) => {
+    const matId = `arv-mat-${mi}`;
+    const totalMat = Object.values(topicos).reduce((s,qs)=>s+qs.length,0);
+    const topicosHTML = Object.entries(topicos)
+      .sort(([a],[b]) => a==='Sem tópico'?1:b==='Sem tópico'?-1:a.localeCompare(b))
+      .map(([top, questoes], ti) => {
+        const topId = `arv-top-${mi}-${ti}`;
+        const questoesHTML = questoes.map(q => {
+          const r = getUltimaResposta(q.id);
+          const statusBadge = r ? (r.correta
+            ? `<span style="font-size:11px;color:#3B6D11;background:#EAF3DE;padding:1px 7px;border-radius:999px;flex-shrink:0">✓ Acertada</span>`
+            : `<span style="font-size:11px;color:#A32D2D;background:#FCEBEB;padding:1px 7px;border-radius:999px;flex-shrink:0">✗ Errada</span>`)
+            : '';
+          const semComent = !q.comentario ? `<span style="font-size:10px;color:#854F0B;background:#FAEEDA;padding:1px 6px;border-radius:999px;flex-shrink:0">Sem comentário</span>` : '';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:9px 16px 9px 48px;border-top:0.5px solid var(--border);cursor:pointer;transition:background .12s"
+            onmouseover="this.querySelector('.arv-btns').style.opacity='1'" onmouseout="this.querySelector('.arv-btns').style.opacity='0'"
+            onclick="abrirQuestaoSozinha('${q.id}')">
+            <span style="font-size:11px;font-weight:700;color:#185FA5;min-width:52px;flex-shrink:0">${q.codigo||'—'}</span>
+            <span style="flex:1;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.enunciado||''}</span>
+            ${statusBadge}
+            ${semComent}
+            <div class="arv-btns" style="display:flex;gap:4px;opacity:0;transition:opacity .15s;flex-shrink:0" onclick="event.stopPropagation()">
+              <button onclick="abrirEditarQuestao('${q.id}')" style="width:28px;height:28px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:12px">✏️</button>
+              <button onclick="deletarQuestao('${q.id}')" style="width:28px;height:28px;border-radius:6px;border:0.5px solid #F7C1C1;background:#FCEBEB;cursor:pointer;font-size:12px">🗑</button>
+            </div>
+          </div>`;
+        }).join('');
+
+        return `<div>
+          <div onclick="var e=document.getElementById('${topId}');var c=document.getElementById('${topId}-chev');e.style.display=e.style.display==='none'?'block':'none';c.style.transform=e.style.display==='block'?'rotate(90deg)':'rotate(0deg)'"
+            style="display:flex;align-items:center;gap:8px;padding:8px 16px 8px 32px;border-top:0.5px solid var(--border);cursor:pointer;transition:background .12s"
+            onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+            <span style="width:5px;height:5px;border-radius:50%;background:#185FA5;flex-shrink:0"></span>
+            <span style="flex:1;font-size:13px;color:#185FA5">${top}</span>
+            <span style="font-size:12px;color:var(--text-muted)">${questoes.length}</span>
+            <span id="${topId}-chev" style="font-size:10px;color:var(--text-muted);transition:transform .2s">▶</span>
+          </div>
+          <div id="${topId}" style="display:none">${questoesHTML}</div>
+        </div>`;
+      }).join('');
+
+    return `<div style="border:0.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px">
+      <div onclick="var e=document.getElementById('${matId}');var c=document.getElementById('${matId}-chev');e.style.display=e.style.display==='none'?'block':'none';c.style.transform=e.style.display==='block'?'rotate(90deg)':'rotate(0deg)'"
+        style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface);cursor:pointer"
+        onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='var(--surface)'">
+        <span id="${matId}-chev" style="font-size:10px;color:var(--text-muted);width:14px;text-align:center;transition:transform .2s">▶</span>
+        <span style="flex:1;font-size:15px;font-weight:500;color:var(--text)">${mat}</span>
+        <span style="font-size:13px;font-weight:500;color:var(--text-muted);background:var(--card);border:0.5px solid var(--border);padding:2px 10px;border-radius:999px">${totalMat}</span>
+      </div>
+      <div id="${matId}" style="display:none">${topicosHTML}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = html;
+}
+
 function renderBanco() {
   const search = document.getElementById('search-banco').value.toLowerCase();
   const assunto = document.getElementById('filter-assunto').value;
@@ -2108,6 +2196,7 @@ function renderBanco() {
       if (status === 'nao_respondida' && r) return false;
       if (status === 'correta' && (!r || !r.correta)) return false;
       if (status === 'errada' && (!r || r.correta)) return false;
+      if (status === 'sem_comentario' && q.comentario) return false;
     }
     return true;
   });
@@ -2125,6 +2214,8 @@ function renderBanco() {
     </div>`;
     return;
   }
+
+  if (_bancoView === 'arvore') { renderBancoArvore(list); return; }
 
   el.innerHTML = list.map((q, i) => {
     const r = getUltimaResposta(q.id);
@@ -3677,7 +3768,7 @@ Object.assign(window, {
   // Utilitários
   isAdmin, showTab, toast, renderMd,
   populateSelects, buildOpcoesForm, atualizarTopicosBanco, atualizarTopicosQuiz,
-  renderBanco, startQuizFromFilter, renderQuizStart,
+  renderBanco, setBancoView, renderBancoArvore, startQuizFromFilter, renderQuizStart,
   renderQuizList, iniciarQuizDaQuestao,
   abrirQuestaoSozinha, startQuiz, iniciarSessao, selectOption,
   confirmarResposta, proximaQuestao, skipQuestion, mostrarResultado,
@@ -4001,33 +4092,95 @@ function expandirQuestaoSimulado(idx) {
 function escolherQuestaoSimulado(idx, materia) {
   if (!window._simRascunho) return;
   const idsAtuais = window._simRascunho.questoes.map(q=>q.id);
-  const pool = db.questoes.filter(q => q.assunto === materia).sort((a,b)=>(a.topico||'').localeCompare(b.topico||''));
+  const pool = db.questoes.filter(q => q.assunto === materia);
   if (!pool.length) { toast('Nenhuma questão disponível nesta matéria!', 'error'); return; }
 
-  // Cria modal de escolha
+  // Agrupa por tópico
+  const topicos = {};
+  pool.forEach(q => {
+    const t = q.topico || 'Sem tópico';
+    if (!topicos[t]) topicos[t] = [];
+    topicos[t].push(q);
+  });
+
+  function renderQuestao(q) {
+    const jaNaLista = idsAtuais.includes(q.id);
+    const qid = `esc-exp-${q.id.replace(/[^a-z0-9]/gi,'_')}`;
+    const alts = ['A','B','C','D','E'].filter(l=>q.opcoes&&q.opcoes[l]).map(l=>`
+      <div style="display:flex;gap:8px;padding:5px 10px;border-radius:6px;border:0.5px solid ${l===q.gabarito?'#3B6D11':'var(--border)'};background:${l===q.gabarito?'#EAF3DE':'var(--surface)'};margin-bottom:3px">
+        <span style="font-weight:500;color:${l===q.gabarito?'#3B6D11':'var(--text-muted)'};min-width:16px;font-size:12px">${l}</span>
+        <span style="font-size:12px;color:var(--text);flex:1">${q.opcoes[l]}</span>
+        ${l===q.gabarito?'<span style="font-size:10px;color:#3B6D11;font-weight:600;flex-shrink:0">✅</span>':''}
+      </div>`).join('');
+    return `<div style="border:0.5px solid ${jaNaLista?'#3B6D11':'var(--border)'};border-radius:8px;margin-bottom:6px;background:${jaNaLista?'#EAF3DE':'var(--card)'}">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:${jaNaLista?'default':'pointer'}" onclick="${jaNaLista?'':'confirmarEscolhaSimulado('+idx+',\''+q.id+'\')'}">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
+            <span style="font-size:10px;color:var(--text-muted)">${q.codigo||''}</span>
+            ${jaNaLista?'<span style="font-size:10px;font-weight:500;background:#EAF3DE;color:#3B6D11;padding:1px 7px;border-radius:999px">✅ No simulado</span>':''}
+          </div>
+          <div style="font-size:13px;color:var(--text);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.enunciado||''}</div>
+        </div>
+        <button onclick="event.stopPropagation();var e=document.getElementById('${qid}');e.style.display=e.style.display==='block'?'none':'block'"
+          style="width:28px;height:28px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0" title="Ver detalhes">👁</button>
+      </div>
+      <div id="${qid}" style="display:none;padding:0 12px 12px;border-top:0.5px solid var(--border);margin-top:0">
+        <p style="font-size:13px;color:var(--text);line-height:1.6;margin:10px 0">${q.enunciado||''}</p>
+        ${alts}
+        ${q.comentario?`<div style="margin-top:8px;padding:8px;background:var(--surface);border-radius:6px;font-size:12px;color:var(--text);line-height:1.5">${renderMd(q.comentario)}</div>`:''}
+      </div>
+    </div>`;
+  }
+
+  function renderTopico(topico, questoes, matIdx) {
+    const tid = `esc-top-${matIdx}-${topico.replace(/[^a-z0-9]/gi,'_')}`;
+    return `<div style="margin-left:16px;margin-bottom:4px">
+      <div onclick="var e=document.getElementById('${tid}');e.style.display=e.style.display==='none'?'block':'none'"
+        style="display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;border:0.5px solid var(--border);background:var(--surface);margin-bottom:4px">
+        <span style="font-size:11px;color:#185FA5;flex:1;font-weight:500">• ${topico}</span>
+        <span style="font-size:11px;color:var(--text-muted)">${questoes.length}</span>
+        <span style="font-size:11px;color:var(--text-muted)">▶</span>
+      </div>
+      <div id="${tid}" style="display:none;margin-left:8px">
+        ${questoes.map(q => renderQuestao(q)).join('')}
+      </div>
+    </div>`;
+  }
+
+  const matId = `esc-mat-${materia.replace(/[^a-z0-9]/gi,'_')}`;
+  const topicosHTML = Object.entries(topicos)
+    .sort(([a],[b])=>a.localeCompare(b))
+    .map(([t, qs], i) => renderTopico(t, qs, i)).join('');
+
   const modal = document.createElement('div');
   modal.id = 'sim-escolha-modal';
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
   modal.innerHTML = `
-    <div style="background:var(--card);border-radius:12px;width:100%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
-      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div style="background:var(--card);border-radius:12px;width:100%;max-width:700px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--text)">Escolher questão — ${materia.split('(')[0].trim()}</div>
-          <div style="font-size:12px;color:var(--text-muted)">${pool.length} questões disponíveis · ✅ = já no simulado</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">${materia.split('(')[0].trim()}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:8px">
+            ${pool.length} questões · ${Object.keys(topicos).length} tópicos
+            <span style="display:inline-flex;align-items:center;gap:4px">
+              <span style="width:10px;height:10px;border-radius:2px;background:#EAF3DE;border:0.5px solid #3B6D11;display:inline-block"></span>
+              já no simulado
+            </span>
+          </div>
         </div>
-        <button onclick="document.getElementById('sim-escolha-modal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-muted)">✕</button>
+        <button onclick="document.getElementById('sim-escolha-modal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-muted);line-height:1">✕</button>
       </div>
-      <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
-        <input class="form-input" placeholder="Buscar questão..." oninput="filtrarEscolhaSimulado(this.value)" style="font-size:13px;width:100%">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border)">
+        <input class="form-input" placeholder="Buscar por enunciado, tópico ou código..." oninput="filtrarEscolhaSimulado(this.value)" style="font-size:13px;width:100%">
       </div>
-      <div id="sim-escolha-lista" style="overflow-y:auto;flex:1;padding:10px 16px">
-        ${pool.map((q,i) => {
-          const jaNaLista = idsAtuais.includes(q.id);
-          return `<div class="sim-escolha-item" data-search="${(q.enunciado||'').toLowerCase()} ${(q.topico||'').toLowerCase()}" onclick="${jaNaLista?'':'confirmarEscolhaSimulado('+idx+',\''+q.id+'\')'}" style="padding:10px;border:1px solid ${jaNaLista?'var(--green)':'var(--border)'};border-radius:8px;margin-bottom:6px;cursor:${jaNaLista?'default':'pointer'};background:${jaNaLista?'var(--green-light)':'var(--surface)'};opacity:${jaNaLista?'0.7':'1'}">
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">${q.topico||''} ${q.codigo?'· '+q.codigo:''} ${jaNaLista?'· <strong style=\'color:var(--green)\'>✅ No simulado</strong>':''}</div>
-            <div style="font-size:13px;color:var(--text);line-height:1.4">${(q.enunciado||'').substring(0,120)}${(q.enunciado||'').length>120?'...':''}</div>
-          </div>`;
-        }).join('')}
+      <div id="sim-escolha-lista" style="overflow-y:auto;flex:1;padding:10px 14px">
+        <div style="border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:0.5px solid var(--border)">
+            <span style="font-size:13px;font-weight:500;color:var(--text);flex:1">${materia}</span>
+            <span style="font-size:11px;color:var(--text-muted)">${pool.length} questões</span>
+          </div>
+          <div style="padding:8px 0">${topicosHTML}</div>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(modal);
@@ -4035,9 +4188,24 @@ function escolherQuestaoSimulado(idx, materia) {
 }
 
 function filtrarEscolhaSimulado(termo) {
-  const items = document.querySelectorAll('.sim-escolha-item');
+  if (!termo.trim()) {
+    // Reset — fecha todos os tópicos
+    document.querySelectorAll('[id^="esc-top-"]').forEach(el => el.style.display = 'none');
+    return;
+  }
   const t = termo.toLowerCase();
-  items.forEach(el => { el.style.display = el.dataset.search.includes(t) ? 'block' : 'none'; });
+  // Abre tópicos que têm questões com o termo e esconde os que não têm
+  document.querySelectorAll('[id^="esc-top-"]').forEach(el => {
+    const questoes = el.querySelectorAll('[style*="border-radius:8px"]');
+    let temResultado = false;
+    questoes.forEach(q => {
+      const txt = q.textContent.toLowerCase();
+      const mostrar = txt.includes(t);
+      q.style.display = mostrar ? '' : 'none';
+      if (mostrar) temResultado = true;
+    });
+    el.style.display = temResultado ? 'block' : 'none';
+  });
 }
 
 function confirmarEscolhaSimulado(idx, qId) {
