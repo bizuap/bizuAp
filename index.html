@@ -4969,12 +4969,7 @@ async function salvarStatusQuestao() {
       return rel ? `${c} — ${rel.enunciado?.slice(0,60)}...` : c;
     });
     setTimeout(() => {
-      if (confirm(`⚠️ ATENÇÃO: A questão ${q.codigo} está relacionada a ${q.relacionadas.length} outra(s) questão(ões) que podem também estar desatualizadas:
-
-${relacionadasNomes.join('
-')}
-
-Deseja visualizá-las no banco?`)) {
+      if (confirm('⚠️ ATENÇÃO: A questão ' + q.codigo + ' está relacionada a ' + q.relacionadas.length + ' outra(s) questão(ões) que podem também estar desatualizadas:\n\n' + relacionadasNomes.join('\n') + '\n\nDeseja visualizá-las no banco?')) {
         document.getElementById('filter-status').value = '';
         document.getElementById('search-banco').value = q.relacionadas[0];
         showTab('banco');
@@ -5083,8 +5078,7 @@ function executarExportacao() {
   } else {
     const headers = ['codigo','enunciado','gabarito','assunto','topico','banca','ano','concurso','status','comentario'];
     const rows = pool.map(q => headers.map(h => `"${(q[h]||'').toString().replace(/"/g,'""')}"`).join(','));
-    const csv = [headers.join(','), ...rows].join('
-');
+    const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `questoes_${new Date().toISOString().slice(0,10)}.csv`; a.click();
