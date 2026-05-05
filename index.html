@@ -1072,7 +1072,7 @@ Exemplos:
       </div>
       <div class="form-section">
         <h3>🤖 Importar PDF com IA</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">A IA extrai as questões do PDF automaticamente. Usa Claude se configurado, senão usa Gemini.</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">A IA extrai as questões do PDF automaticamente. Requer chave Gemini configurada em Configurações → Integrações.</p>
         <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s" id="pdf-drop-area" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="font-size:28px;margin-bottom:8px">📄</div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px" id="pdf-label">Arraste o PDF ou clique para selecionar</div>
@@ -3309,9 +3309,8 @@ function limparPDF() {
 
 async function extrairPDFcomIA() {
   if (!_pdfBase64) { toast('Selecione um PDF primeiro!', 'error'); return; }
-  const apiKey = db.settings?.apiKey;
   const geminiKey = db.settings?.geminiKey;
-  if (!apiKey && !geminiKey) { toast('Configure a chave Claude ou Gemini nas Configurações!', 'error'); return; }
+  if (!geminiKey) { toast('Configure a chave Gemini nas Configurações → Integrações!', 'error'); return; }
 
   const statusEl = document.getElementById('pdf-status');
   const btn = document.getElementById('btn-extrair-pdf');
@@ -3339,31 +3338,8 @@ Se não houver gabarito no PDF, deixe "gabarito" em branco.`;
   try {
     let questoes = null;
 
-    if (apiKey) {
-      // Usa Claude
-      statusEl.textContent = '🤖 Usando Claude...';
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-opus-4-5',
-          max_tokens: 8000,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: _pdfBase64 } },
-              { type: 'text', text: prompt }
-            ]
-          }]
-        })
-      });
-      const data = await resp.json();
-      const text = data.content?.[0]?.text || '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      questoes = JSON.parse(clean);
-
-    } else if (geminiKey) {
-      // Usa Gemini
+    if (geminiKey) {
+      // Usa Gemini (único que aceita chamada direta do browser)
       statusEl.textContent = '🤖 Usando Gemini...';
       const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
@@ -3380,6 +3356,9 @@ Se não houver gabarito no PDF, deixe "gabarito" em branco.`;
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
       const clean = text.replace(/```json|```/g, '').trim();
       questoes = JSON.parse(clean);
+
+    } else {
+      throw new Error('Configure a chave Gemini nas Configurações para usar esta função!');
     }
 
     if (!questoes || !questoes.length) throw new Error('Nenhuma questão extraída');
