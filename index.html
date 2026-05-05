@@ -3341,7 +3341,7 @@ Se não houver gabarito no PDF, deixe "gabarito" em branco.`;
     if (geminiKey) {
       // Usa Gemini (único que aceita chamada direta do browser)
       statusEl.textContent = '🤖 Usando Gemini...';
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -3353,7 +3353,9 @@ Se não houver gabarito no PDF, deixe "gabarito" em branco.`;
         })
       });
       const data = await resp.json();
+      if (data.error) throw new Error('Gemini: ' + data.error.message);
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!text) throw new Error('Gemini não retornou texto. Verifique a chave API.');
       const clean = text.replace(/```json|```/g, '').trim();
       questoes = JSON.parse(clean);
 
