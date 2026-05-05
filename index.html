@@ -3663,7 +3663,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, excluirProva, verRankingSimulado, gerarCardRanking, verResultadoSimulado,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -3707,77 +3707,328 @@ function renderMd(text) {
 // =============================================
 // SIMULADOS
 // =============================================
-let _sim = null; // estado do simulado ativo
+let _sim = null;
 
 function renderSimulados() {
-  const body = document.getElementById('simulados-lista');
+  const body = document.getElementById('simulados-body');
   if (!body) return;
-  // Busca provas cadastradas
   const provas = db.provas || [];
-  if (!provas.length) {
-    body.innerHTML = `<div class="empty-state"><div class="empty-icon">🎯</div><h3>Nenhum simulado disponível</h3><p>Os simulados são criados ao importar questões com a opção "Disponibilizar como Simulado".</p></div>`;
-    return;
-  }
-  body.innerHTML = provas.map(p => {
-    const hist = (db.historico_simulados || []).filter(h => h.provaId === p.id);
-    const ultimoHist = hist[hist.length-1];
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;background:var(--card)">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div>
-          <div style="font-size:16px;font-weight:700;color:var(--text)">${p.nome}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">
-            ${p.totalQuestoes} questões · ${Math.floor(p.tempo/60)}h${p.tempo%60>0?p.tempo%60+'min':''} · ${p.ano||''}
+  const isAdm = isAdmin();
+  const agora = Date.now();
+
+  // Seção montar simulado (admin)
+  const btnMontar = isAdm ? `<button class="btn btn-primary" onclick="abrirMontarSimulado()" style="margin-bottom:18px">+ Montar Simulado</button>` : '';
+
+  // Separa provas oficiais (importadas) e personalizadas (montadas)
+  const oficiais = provas.filter(p => p.tipo === 'importado' || !p.tipo);
+  const personalizados = provas.filter(p => p.tipo === 'personalizado');
+
+  function cardProva(p) {
+    const hist = (db.historico_simulados || []).find(h => h.provaId === p.id);
+    const dentroRank = p.dataLimiteRank && Date.now() <= p.dataLimiteRank;
+    const podeRank = !p.dataLimiteRank || dentroRank;
+    const horas = Math.floor((p.tempo||180)/60);
+    const mins = (p.tempo||180)%60;
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:10px;background:var(--card)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${p.nome}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
+            ${p.totalQuestoes||0} questões · ${horas>0?horas+'h':''}${mins>0?mins+'min':horas===0?'—':''}${p.ano?' · '+p.ano:''}
           </div>
-          ${ultimoHist ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Realizado — ${ultimoHist.acertos}/${p.totalQuestoes} acertos (${Math.round(ultimoHist.acertos/p.totalQuestoes*100)}%)</div>` : ''}
+          ${p.dataLimiteRank ? `<div style="font-size:11px;margin-top:3px;color:${dentroRank?'var(--green)':'var(--text-muted)'}">
+            ${dentroRank?'⏰ Rank aberto até':'🔒 Rank encerrado em'} ${new Date(p.dataLimiteRank).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+          </div>` : ''}
+          ${hist ? `<div style="font-size:11px;color:var(--green);margin-top:4px">✅ Realizado — ${hist.acertos}/${p.totalQuestoes} acertos · ${hist.notaPonderada||''}pts</div>` : ''}
         </div>
-        <button class="btn btn-primary" onclick="iniciarSimuladoTela('${p.id}')">▶ Iniciar Simulado</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${hist ? `<button class="btn btn-ghost btn-sm" onclick="verResultadoSimulado('${p.id}')">📊 Ver Resultado</button>` : ''}
+          <button class="btn btn-primary btn-sm" onclick="iniciarSimuladoTela('${p.id}')">▶ ${hist?'Refazer':'Iniciar'}</button>
+          ${isAdm ? `<button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>` : `<button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>`}
+          ${isAdm ? `<button class="btn btn-danger btn-sm" onclick="excluirProva('${p.id}')">🗑</button>` : ''}
+        </div>
       </div>
     </div>`;
-  }).join('');
+  }
+
+  let html = btnMontar;
+
+  if (personalizados.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">🎯 Simulados Personalizados</div>`;
+    html += personalizados.map(cardProva).join('');
+  }
+  if (oficiais.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;text-transform:uppercase;margin:${personalizados.length?'16px':0} 0 8px">📋 Provas Oficiais</div>`;
+    html += oficiais.map(cardProva).join('');
+  }
+  if (!provas.length) {
+    html += `<div class="empty-state"><div class="empty-icon">🎯</div><h3>Nenhum simulado disponível</h3><p>Monte um simulado ou importe questões com "Disponibilizar como Simulado".</p></div>`;
+  }
+
+  // Rankings gerais
+  html += renderRankingsGerais();
+
+  body.innerHTML = html;
+}
+
+function renderRankingsGerais() {
+  const alunos = db.usuarios || [];
+  const hist = db.historico_simulados || [];
+  if (!hist.length) return '';
+
+  // Aluno Destaque
+  const stats = {};
+  hist.forEach(h => {
+    if (!stats[h.uid||h.email]) stats[h.uid||h.email] = { nome: h.nomeAluno||h.email||'Aluno', acertos:0, total:0, simulados:0 };
+    stats[h.uid||h.email].acertos += h.acertos;
+    stats[h.uid||h.email].total += h.total;
+    stats[h.uid||h.email].simulados++;
+  });
+  const destaque = Object.values(stats).sort((a,b) => (b.acertos/b.total) - (a.acertos/a.total)).slice(0,5);
+
+  if (!destaque.length) return '';
+  const medalhas = ['🥇','🥈','🥉','4️⃣','5️⃣'];
+  return `<div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">🏆 Aluno Destaque</div>
+    ${destaque.map((a,i) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)">
+      <span style="font-size:18px;width:28px">${medalhas[i]}</span>
+      <span style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${a.nome}</span>
+      <span style="font-size:12px;color:var(--text-muted)">${a.acertos}/${a.total} (${Math.round(a.acertos/a.total*100)}%)</span>
+    </div>`).join('')}
+  </div>`;
+}
+
+function abrirMontarSimulado() {
+  const body = document.getElementById('simulados-body');
+  const materias = ASSUNTOS || [];
+  body.innerHTML = `
+    <div style="max-width:700px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button>
+        <h2 style="font-size:18px;font-weight:700;color:var(--text)">Montar Simulado</h2>
+      </div>
+      <div class="form-section">
+        <h3>Configurações</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="form-group" style="grid-column:1/-1"><label>Nome do Simulado</label>
+            <input class="form-input" id="sim-nome" placeholder="Ex: Mini Simulado — Lei 066 Semana 1"></div>
+          <div class="form-group"><label>Tempo (minutos)</label>
+            <input class="form-input" id="sim-tempo" type="number" value="60" min="10"></div>
+          <div class="form-group"><label>Total de Questões</label>
+            <input class="form-input" id="sim-total" type="number" value="20" min="1" oninput="atualizarDistribuicao()"></div>
+          <div class="form-group"><label>Data de Início</label>
+            <input class="form-input" id="sim-inicio" type="datetime-local"></div>
+          <div class="form-group"><label>Prazo do Ranking</label>
+            <input class="form-input" id="sim-prazo" type="datetime-local"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <h3>Matérias, Questões e Peso</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Defina quantas questões de cada matéria e o peso na nota. Padrão: peso 1.</p>
+        <div id="sim-materias-list">
+          ${materias.map((m,i) => {
+            const count = db.questoes.filter(q=>q.assunto===m).length;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border)" id="sim-mat-row-${i}">
+              <input type="checkbox" id="sim-mat-check-${i}" onchange="atualizarDistribuicao()" style="width:16px;height:16px;cursor:pointer">
+              <label for="sim-mat-check-${i}" style="flex:1;font-size:13px;color:var(--text);cursor:pointer">${m} <span style="color:var(--text-muted);font-size:11px">(${count} disponíveis)</span></label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <label style="font-size:11px;color:var(--text-muted)">Qtd:</label>
+                <input type="number" id="sim-mat-qtd-${i}" value="0" min="0" max="${count}" style="width:55px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center" oninput="atualizarDistribuicao()">
+                <label style="font-size:11px;color:var(--text-muted)">Peso:</label>
+                <input type="number" id="sim-mat-peso-${i}" value="1" min="1" max="5" style="width:45px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:center">
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="margin-top:10px;padding:10px;background:var(--surface);border-radius:8px;font-size:13px;color:var(--text-muted)" id="sim-resumo">
+          Selecione as matérias acima
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-primary" onclick="gerarSimuladoAutomatico()">⚡ Gerar Automático</button>
+        <button class="btn btn-ghost" onclick="renderSimulados()">Cancelar</button>
+      </div>
+    </div>`;
+}
+
+function atualizarDistribuicao() {
+  const materias = ASSUNTOS || [];
+  let totalSelecionado = 0;
+  let resumo = [];
+  materias.forEach((m, i) => {
+    const check = document.getElementById(`sim-mat-check-${i}`);
+    const qtd = parseInt(document.getElementById(`sim-mat-qtd-${i}`)?.value) || 0;
+    if (check?.checked && qtd > 0) { totalSelecionado += qtd; resumo.push(`${m.split('(')[0].trim().substring(0,30)}: ${qtd}q`); }
+  });
+  const el = document.getElementById('sim-resumo');
+  if (el) el.textContent = totalSelecionado > 0 ? `Total: ${totalSelecionado} questões — ${resumo.join(' · ')}` : 'Selecione as matérias acima';
+}
+
+async function gerarSimuladoAutomatico() {
+  const nome = document.getElementById('sim-nome')?.value.trim();
+  if (!nome) { toast('Digite o nome do simulado!', 'error'); return; }
+  const tempo = parseInt(document.getElementById('sim-tempo')?.value) || 60;
+  const inicio = document.getElementById('sim-inicio')?.value;
+  const prazo = document.getElementById('sim-prazo')?.value;
+  const materias = ASSUNTOS || [];
+
+  // Coleta configuração por matéria
+  const config = [];
+  materias.forEach((m, i) => {
+    const check = document.getElementById(`sim-mat-check-${i}`);
+    const qtd = parseInt(document.getElementById(`sim-mat-qtd-${i}`)?.value) || 0;
+    const peso = parseInt(document.getElementById(`sim-mat-peso-${i}`)?.value) || 1;
+    if (check?.checked && qtd > 0) config.push({ materia: m, qtd, peso });
+  });
+  if (!config.length) { toast('Selecione pelo menos uma matéria!', 'error'); return; }
+
+  // Sorteia questões por matéria
+  const questoesSorteadas = [];
+  for (const c of config) {
+    const pool = db.questoes.filter(q => q.assunto === c.materia);
+    const shuffled = pool.sort(() => Math.random() - 0.5).slice(0, c.qtd);
+    shuffled.forEach(q => questoesSorteadas.push({ ...q, _peso: c.peso }));
+  }
+
+  if (!questoesSorteadas.length) { toast('Nenhuma questão encontrada para as matérias selecionadas!', 'error'); return; }
+
+  // Mostra revisão
+  mostrarRevisaoSimulado(questoesSorteadas, { nome, tempo, inicio, prazo, config });
+}
+
+function mostrarRevisaoSimulado(questoes, cfg) {
+  const body = document.getElementById('simulados-body');
+  body.innerHTML = `
+    <div style="max-width:760px;margin:0 auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn btn-ghost btn-sm" onclick="abrirMontarSimulado()">← Voltar</button>
+          <h2 style="font-size:16px;font-weight:700;color:var(--text)">${cfg.nome} — ${questoes.length} questões</h2>
+        </div>
+        <button class="btn btn-primary" onclick="salvarSimulado()">💾 Salvar Simulado</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Revise as questões. Use 🔄 para trocar por outra da mesma matéria ou ❌ para remover.</p>
+      <div id="sim-revisao-list">
+        ${questoes.map((q, i) => `
+          <div id="sim-rev-${i}" style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:8px;background:var(--card)">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+              <div style="flex:1">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${q.assunto?.split('(')[0].trim()||''} ${q.topico?'· '+q.topico:''} · Peso: ${q._peso} ${q.codigo?'· '+q.codigo:''}</div>
+                <div style="font-size:13px;color:var(--text);line-height:1.5">${(q.enunciado||'').substring(0,150)}${q.enunciado?.length>150?'...':''}</div>
+              </div>
+              <div style="display:flex;gap:5px;flex-shrink:0">
+                <button onclick="trocarQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Trocar" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:13px">🔄</button>
+                <button onclick="removerQuestaoSimulado(${i})" title="Remover" style="background:#FCEBEB;border:1px solid #F7C1C1;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:13px">❌</button>
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  // Salva estado
+  window._simRascunho = { questoes: [...questoes], cfg };
+}
+
+function trocarQuestaoSimulado(idx, materia) {
+  if (!window._simRascunho) return;
+  const idsAtuais = window._simRascunho.questoes.map(q=>q.id);
+  const pool = db.questoes.filter(q => q.assunto === materia && !idsAtuais.includes(q.id));
+  if (!pool.length) { toast('Não há mais questões disponíveis desta matéria!', 'error'); return; }
+  const nova = pool[Math.floor(Math.random()*pool.length)];
+  const peso = window._simRascunho.questoes[idx]._peso;
+  window._simRascunho.questoes[idx] = { ...nova, _peso: peso };
+  mostrarRevisaoSimulado(window._simRascunho.questoes, window._simRascunho.cfg);
+}
+
+function removerQuestaoSimulado(idx) {
+  if (!window._simRascunho) return;
+  window._simRascunho.questoes.splice(idx, 1);
+  mostrarRevisaoSimulado(window._simRascunho.questoes, window._simRascunho.cfg);
+}
+
+async function salvarSimulado() {
+  if (!window._simRascunho) return;
+  const { questoes, cfg } = window._simRascunho;
+  if (!questoes.length) { toast('Adicione pelo menos uma questão!', 'error'); return; }
+  const { db_fire, doc, setDoc, serverTimestamp } = window._fire;
+  const provaId = genId();
+  const dadosProva = {
+    nome: cfg.nome, tempo: cfg.tempo, totalQuestoes: questoes.length,
+    tipo: 'personalizado',
+    questoesIds: questoes.map(q => ({ id: q.id, peso: q._peso })),
+    config: cfg.config,
+    dataInicio: cfg.inicio ? new Date(cfg.inicio).getTime() : Date.now(),
+    dataLimiteRank: cfg.prazo ? new Date(cfg.prazo).getTime() : null,
+    criadoEm: serverTimestamp(),
+  };
+  await setDoc(doc(db_fire, 'provas', provaId), dadosProva);
+  if (!db.provas) db.provas = [];
+  db.provas.push({ id: provaId, ...dadosProva });
+  toast('Simulado salvo com sucesso! ✅', 'success');
+  window._simRascunho = null;
+  renderSimulados();
+}
+
+async function excluirProva(provaId) {
+  if (!confirm('Excluir este simulado?')) return;
+  const { db_fire, doc, deleteDoc } = window._fire;
+  await deleteDoc(doc(db_fire, 'provas', provaId));
+  db.provas = (db.provas||[]).filter(p => p.id !== provaId);
+  toast('Simulado excluído!', 'info');
+  renderSimulados();
 }
 
 function iniciarSimuladoTela(provaId) {
   const prova = (db.provas||[]).find(p => p.id === provaId);
   if (!prova) return;
-  const questoes = db.questoes.filter(q => q.provaId === provaId);
-  if (!questoes.length) { toast('Nenhuma questão encontrada para este simulado!', 'error'); return; }
+  // Monta pool de questões
+  let questoes = [];
+  if (prova.questoesIds && prova.questoesIds.length) {
+    questoes = prova.questoesIds.map(qi => {
+      const q = db.questoes.find(x => x.id === (qi.id||qi));
+      return q ? { ...q, _peso: qi.peso||1 } : null;
+    }).filter(Boolean);
+  } else {
+    questoes = db.questoes.filter(q => q.provaId === provaId).map(q => ({ ...q, _peso: 1 }));
+  }
+  if (!questoes.length) { toast('Nenhuma questão encontrada!', 'error'); return; }
+  const horas = Math.floor((prova.tempo||180)/60);
+  const mins = (prova.tempo||180)%60;
   const body = document.getElementById('simulados-body');
-  const horas = Math.floor(prova.tempo/60);
-  const mins = prova.tempo%60;
   body.innerHTML = `
-    <div style="max-width:700px;margin:0 auto">
+    <div style="max-width:680px;margin:0 auto">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center">
-        <div style="font-size:48px;margin-bottom:12px">🎯</div>
+        <div style="font-size:44px;margin-bottom:12px">🎯</div>
         <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">${prova.nome}</h2>
         <div style="display:flex;justify-content:center;gap:24px;margin:16px 0;flex-wrap:wrap">
-          <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:var(--blue)">${questoes.length}</div><div style="font-size:12px;color:var(--text-muted)">Questões</div></div>
-          <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:var(--blue)">${horas>0?horas+'h':''}${mins>0?mins+'min':''}</div><div style="font-size:12px;color:var(--text-muted)">Tempo</div></div>
-          <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:var(--blue)">${prova.ano||'—'}</div><div style="font-size:12px;color:var(--text-muted)">Ano</div></div>
+          <div><div style="font-size:24px;font-weight:800;color:var(--blue)">${questoes.length}</div><div style="font-size:12px;color:var(--text-muted)">Questões</div></div>
+          <div><div style="font-size:24px;font-weight:800;color:var(--blue)">${horas>0?horas+'h':''}${mins>0?mins+'min':horas===0?'—':''}</div><div style="font-size:12px;color:var(--text-muted)">Tempo</div></div>
         </div>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;line-height:1.6">O cronômetro só inicia quando você clicar em <strong>Iniciar</strong>.<br>Você pode pausar a qualquer momento.</p>
-        <button class="btn btn-primary" style="padding:14px 36px;font-size:16px" onclick="comecarSimulado('${provaId}')">▶ Iniciar Simulado</button>
-        <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="renderSimulados();document.getElementById('simulados-body').innerHTML='<div id=\\'simulados-lista\\'></div>';renderSimulados()">← Voltar</button></div>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;line-height:1.6">O cronômetro só inicia quando você clicar em <strong>Iniciar</strong>. Você pode pausar a qualquer momento.</p>
+        <button class="btn btn-primary" style="padding:14px 36px;font-size:16px" onclick="comecarSimulado('${provaId}',${JSON.stringify(questoes).replace(/"/g,'&quot;')})">▶ Iniciar Simulado</button>
+        <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button></div>
       </div>
     </div>`;
 }
 
-function comecarSimulado(provaId) {
+function comecarSimulado(provaId, questoesParam) {
   const prova = (db.provas||[]).find(p => p.id === provaId);
   if (!prova) return;
-  const questoes = db.questoes.filter(q => q.provaId === provaId);
+  let questoes = questoesParam;
+  if (typeof questoes === 'string') {
+    try { questoes = JSON.parse(questoes); } catch(e) { questoes = []; }
+  }
+  if (!questoes || !questoes.length) {
+    questoes = (prova.questoesIds||[]).map(qi => {
+      const q = db.questoes.find(x => x.id === (qi.id||qi));
+      return q ? { ...q, _peso: qi.peso||1 } : null;
+    }).filter(Boolean);
+  }
   _sim = {
-    provaId,
-    prova,
-    questoes,
-    respostas: {},
-    idx: 0,
-    iniciado: Date.now(),
-    pausado: false,
-    tempoRestante: prova.tempo * 60,
-    tempoAtivo: 0,
-    pausas: [],
-    pausaInicio: null,
-    interval: null,
+    provaId, prova, questoes,
+    respostas: {}, idx: 0,
+    iniciado: Date.now(), pausado: false,
+    tempoRestante: (prova.tempo||180)*60,
+    tempoAtivo: 0, pausas: [], pausaInicio: null, interval: null,
   };
   _sim.interval = setInterval(tickSimulado, 1000);
   document.addEventListener('visibilitychange', simVisibilityHandler);
@@ -3817,19 +4068,14 @@ function pausarSimulado() {
 function retomarSimulado() {
   if (!_sim || !_sim.pausado) return;
   _sim.pausado = false;
-  if (_sim.pausaInicio) {
-    _sim.pausas.push({ duracao: Math.round((Date.now() - _sim.pausaInicio)/1000) });
-    _sim.pausaInicio = null;
-  }
+  if (_sim.pausaInicio) { _sim.pausas.push({ duracao: Math.round((Date.now()-_sim.pausaInicio)/1000) }); _sim.pausaInicio = null; }
   const btn = document.getElementById('sim-btn-pausa');
   if (btn) btn.textContent = '⏸ Pausar';
   const overlay = document.getElementById('sim-pausa-overlay');
   if (overlay) overlay.style.display = 'none';
 }
 
-function togglePausaSimulado() {
-  if (_sim?.pausado) retomarSimulado(); else pausarSimulado();
-}
+function togglePausaSimulado() { if (_sim?.pausado) retomarSimulado(); else pausarSimulado(); }
 
 function renderSimuladoAtivo() {
   if (!_sim) return;
@@ -3839,27 +4085,24 @@ function renderSimuladoAtivo() {
   const resp = _sim.respostas[q.id];
   const body = document.getElementById('simulados-body');
   body.innerHTML = `
-    <div style="position:relative">
-      <!-- PAUSA OVERLAY -->
-      <div id="sim-pausa-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+    <div>
+      <div id="sim-pausa-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px">
         <div style="font-size:48px">⏸</div>
         <div style="font-size:22px;font-weight:700;color:#fff">Simulado Pausado</div>
         <div style="font-size:14px;color:rgba(255,255,255,0.6)">Suas respostas estão salvas</div>
         <button class="btn btn-primary" style="margin-top:8px;padding:12px 32px;font-size:15px" onclick="retomarSimulado()">▶ Retomar</button>
       </div>
-      <!-- HEADER -->
       <div style="background:var(--card);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;position:sticky;top:57px;z-index:9">
         <div style="font-size:13px;font-weight:600;color:var(--text)">Questão ${_sim.idx+1} de ${total}</div>
         <div id="sim-cronometro" style="font-size:20px;font-weight:800;color:var(--blue);font-family:'Sora',monospace">--:--</div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" id="sim-btn-pausa" onclick="togglePausaSimulado()">⏸ Pausar</button>
-          <button class="btn btn-danger btn-sm" onclick="if(confirm('Entregar o simulado agora?'))entregarSimulado()">⏹ Entregar</button>
+          <button class="btn btn-danger btn-sm" onclick="if(confirm('Entregar agora?'))entregarSimulado()">⏹ Entregar</button>
         </div>
       </div>
-      <!-- QUESTÃO -->
       <div style="max-width:760px;margin:20px auto;padding:0 16px">
         <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">${q.assunto||''} ${q.topico?'· '+q.topico:''}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">${q.assunto?.split('(')[0].trim()||''} ${q.topico?'· '+q.topico:''} ${q._peso>1?'· Peso '+q._peso:''}</div>
           <p style="font-size:15px;line-height:1.7;color:var(--text);margin-bottom:20px">${q.enunciado}</p>
           <div style="display:flex;flex-direction:column;gap:8px">
             ${letras.filter(l=>q.opcoes&&q.opcoes[l]).map(l=>`
@@ -3869,21 +4112,15 @@ function renderSimuladoAtivo() {
               </div>`).join('')}
           </div>
         </div>
-        <!-- NAVEGAÇÃO -->
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <button class="btn btn-ghost" onclick="simNavegar(-1)" ${_sim.idx===0?'disabled':''}>← Anterior</button>
           <div style="font-size:12px;color:var(--text-muted)">${Object.keys(_sim.respostas).length} de ${total} respondidas</div>
           <button class="btn btn-primary" onclick="simNavegar(1)" ${_sim.idx===total-1?'disabled':''}>Próxima →</button>
         </div>
-        <!-- GRADE DE QUESTÕES -->
         <div style="margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
-          <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px">GRADE DE RESPOSTAS</div>
+          <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:8px">GRADE</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px">
-            ${_sim.questoes.map((qq,i)=>{
-              const r = _sim.respostas[qq.id];
-              const ativo = i === _sim.idx;
-              return `<div onclick="simIr(${i})" style="width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid ${ativo?'var(--blue)':r?'var(--green)':'var(--border)'};background:${ativo?'var(--blue)':r?'var(--green-light)':'var(--surface)'};color:${ativo?'#fff':r?'var(--green)':'var(--text-muted)'}">${i+1}</div>`;
-            }).join('')}
+            ${_sim.questoes.map((qq,i)=>{const r=_sim.respostas[qq.id];const a=i===_sim.idx;return `<div onclick="simIr(${i})" style="width:30px;height:30px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid ${a?'var(--blue)':r?'var(--green)':'var(--border)'};background:${a?'var(--blue)':r?'var(--green-light)':'var(--surface)'};color:${a?'#fff':r?'var(--green)':'var(--text-muted)'}">${i+1}</div>`;}).join('')}
           </div>
         </div>
       </div>
@@ -3891,23 +4128,9 @@ function renderSimuladoAtivo() {
   tickSimulado();
 }
 
-function simResponder(qId, letra) {
-  if (!_sim || _sim.pausado) return;
-  _sim.respostas[qId] = letra;
-  renderSimuladoAtivo();
-}
-
-function simNavegar(dir) {
-  if (!_sim) return;
-  _sim.idx = Math.max(0, Math.min(_sim.questoes.length-1, _sim.idx+dir));
-  renderSimuladoAtivo();
-}
-
-function simIr(idx) {
-  if (!_sim) return;
-  _sim.idx = idx;
-  renderSimuladoAtivo();
-}
+function simResponder(qId, letra) { if (!_sim||_sim.pausado) return; _sim.respostas[qId]=letra; renderSimuladoAtivo(); }
+function simNavegar(dir) { if (!_sim) return; _sim.idx=Math.max(0,Math.min(_sim.questoes.length-1,_sim.idx+dir)); renderSimuladoAtivo(); }
+function simIr(idx) { if (!_sim) return; _sim.idx=idx; renderSimuladoAtivo(); }
 
 async function entregarSimulado() {
   if (!_sim) return;
@@ -3915,30 +4138,56 @@ async function entregarSimulado() {
   document.removeEventListener('visibilitychange', simVisibilityHandler);
   const prova = _sim.prova;
   const questoes = _sim.questoes;
+  let pontos = 0, pontosTotais = 0;
   let acertos = 0;
   const detalhes = questoes.map(q => {
-    const resp = _sim.respostas[q.id] || null;
+    const resp = _sim.respostas[q.id]||null;
     const correta = resp === q.gabarito;
-    if (correta) acertos++;
-    return { qId: q.id, resposta: resp, correta, gabarito: q.gabarito };
+    const peso = q._peso||1;
+    pontosTotais += peso;
+    if (correta) { acertos++; pontos += peso; }
+    return { qId:q.id, resposta:resp, correta, gabarito:q.gabarito, peso };
   });
-  const totalPausas = _sim.pausas.length;
-  const tempoPausado = _sim.pausas.reduce((s,p)=>s+p.duracao, 0);
   const pct = Math.round(acertos/questoes.length*100);
-  // Salva histórico
-  const hist = { provaId: prova.id, nome: prova.nome, acertos, total: questoes.length, tempoAtivo: _sim.tempoAtivo, totalPausas, tempoPausado, realizadoEm: Date.now() };
+  const notaPonderada = Math.round((pontos/pontosTotais)*100)/100;
+  const totalPausas = _sim.pausas.length;
+  const tempoPausado = _sim.pausas.reduce((s,p)=>s+p.duracao,0);
+
+  // Verifica se está dentro do prazo do rank
+  const dentroRank = !prova.dataLimiteRank || Date.now() <= prova.dataLimiteRank;
+
+  // Salva resultado no Firestore e local
+  const hist = {
+    provaId: prova.id, nome: prova.nome,
+    nomeAluno: db.user?.nome||db.user?.email||'Aluno',
+    email: db.user?.email||'',
+    acertos, total: questoes.length, pontos, pontosTotais,
+    notaPonderada: `${pontos}/${pontosTotais}`,
+    tempoAtivo: _sim.tempoAtivo, totalPausas, tempoPausado,
+    realizadoEm: Date.now(), detalhes, dentroRank,
+  };
   if (!db.historico_simulados) db.historico_simulados = [];
   db.historico_simulados.push(hist);
   localStorage.setItem('pt_historico_sim', JSON.stringify(db.historico_simulados));
-  // Monta resultado por matéria
+
+  // Salva no Firestore para ranking
+  if (dentroRank && window._fire) {
+    try {
+      const { db_fire, doc, setDoc } = window._fire;
+      await setDoc(doc(db_fire, 'resultados_simulados', `${prova.id}_${db.user?.uid||Date.now()}`), hist);
+    } catch(e) { console.error(e); }
+  }
+
+  // Por matéria
   const porMateria = {};
   detalhes.forEach(d => {
     const q = questoes.find(x=>x.id===d.qId);
-    const mat = q?.assunto || 'Geral';
-    if (!porMateria[mat]) porMateria[mat] = { acertos:0, total:0 };
+    const mat = q?.assunto?.split('(')[0].trim()||'Geral';
+    if (!porMateria[mat]) porMateria[mat]={acertos:0,total:0};
     porMateria[mat].total++;
     if (d.correta) porMateria[mat].acertos++;
   });
+
   const hA = Math.floor(_sim.tempoAtivo/3600);
   const mA = Math.floor((_sim.tempoAtivo%3600)/60);
   const mP = Math.floor(tempoPausado/60);
@@ -3947,11 +4196,11 @@ async function entregarSimulado() {
     <div style="max-width:700px;margin:0 auto;padding:20px 16px">
       <div style="text-align:center;margin-bottom:24px">
         <div style="font-size:52px">${pct>=70?'🏆':pct>=50?'📊':'📚'}</div>
-        <h2 style="font-size:22px;font-weight:800;color:var(--text);margin:8px 0">${prova.nome}</h2>
+        <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:8px 0">${prova.nome}</h2>
         <div style="font-size:48px;font-weight:900;color:${pct>=70?'var(--green)':pct>=50?'#d97706':'var(--red)'}">${pct}%</div>
-        <div style="font-size:15px;color:var(--text-muted)">${acertos} de ${questoes.length} acertos</div>
+        <div style="font-size:15px;color:var(--text-muted)">${acertos}/${questoes.length} acertos · Nota ponderada: ${pontos}/${pontosTotais} pts</div>
+        ${dentroRank ? '<div style="font-size:12px;color:var(--green);margin-top:4px">✅ Resultado registrado no ranking!</div>' : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">⏰ Prazo do ranking encerrado — resultado não contabilizado</div>'}
       </div>
-      <!-- STATS -->
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
         <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
           <div style="font-size:18px;font-weight:800;color:var(--text)">${hA>0?hA+'h':''}${mA}min</div>
@@ -3966,27 +4215,121 @@ async function entregarSimulado() {
           <div style="font-size:11px;color:var(--text-muted)">Tempo pausado</div>
         </div>
       </div>
-      <!-- POR MATÉRIA -->
       <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📊 Resultado por Matéria</div>
-        ${Object.entries(porMateria).map(([mat,v])=>{
-          const p = Math.round(v.acertos/v.total*100);
-          return `<div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-              <span style="color:var(--text)">${mat.split('(')[0].trim()}</span>
-              <span style="color:var(--text-muted)">${v.acertos}/${v.total} (${p}%)</span>
-            </div>
-            <div style="height:6px;background:var(--border);border-radius:3px">
-              <div style="height:6px;background:${p>=70?'var(--green)':p>=50?'#d97706':'var(--red)'};border-radius:3px;width:${p}%"></div>
-            </div>
-          </div>`;
-        }).join('')}
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📊 Por Matéria</div>
+        ${Object.entries(porMateria).map(([mat,v])=>{const p=Math.round(v.acertos/v.total*100);return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${mat}</span><span style="color:var(--text-muted)">${v.acertos}/${v.total} (${p}%)</span></div><div style="height:6px;background:var(--border);border-radius:3px"><div style="height:6px;background:${p>=70?'var(--green)':p>=50?'#d97706':'var(--red)'};border-radius:3px;width:${p}%"></div></div></div>`;}).join('')}
       </div>
-      <div style="text-align:center">
-        <button class="btn btn-primary" onclick="showTab('simulados')">← Voltar aos Simulados</button>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">📝 Gabarito</div>
+        ${detalhes.map((d,i)=>{const q=questoes.find(x=>x.id===d.qId);return `<div style="border-bottom:0.5px solid var(--border);padding:10px 0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:11px;font-weight:700;color:var(--text-muted)">Q${i+1}</span>
+            <span style="font-size:13px;font-weight:600;color:${d.correta?'var(--green)':'var(--red)'}">${d.correta?'✅':'❌'} ${d.resposta||'—'} → Gabarito: ${d.gabarito}</span>
+            ${d.peso>1?`<span style="font-size:10px;background:var(--blue-light);color:var(--blue);padding:1px 6px;border-radius:4px">Peso ${d.peso}</span>`:''}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted)">${(q?.enunciado||'').substring(0,100)}...</div>
+          ${q?.comentario?`<details style="margin-top:6px"><summary style="font-size:12px;color:var(--blue);cursor:pointer">Ver comentário</summary><div style="font-size:12px;color:var(--text);margin-top:6px;line-height:1.6;padding:8px;background:var(--surface);border-radius:6px">${renderMd(q.comentario)}</div></details>`:''}
+        </div>`;}).join('')}
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="showTab('simulados')">← Voltar</button>
+        <button class="btn btn-ghost" onclick="verRankingSimulado('${prova.id}')">🏆 Ver Ranking</button>
+        ${isAdmin()?`<button class="btn btn-ghost" onclick="gerarCardRanking('${prova.id}')">📤 Gerar Card</button>`:''}
       </div>
     </div>`;
   _sim = null;
+}
+
+async function verRankingSimulado(provaId) {
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  if (!prova) return;
+  const body = document.getElementById('simulados-body');
+  body.innerHTML = `<div style="max-width:600px;margin:0 auto;padding:20px 16px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button><h2 style="font-size:16px;font-weight:700">🏆 ${prova.nome}</h2></div><p style="color:var(--text-muted);font-size:13px">Carregando ranking...</p></div>`;
+
+  let resultados = [];
+  try {
+    const { db_fire, collection, getDocs, query, where, orderBy } = window._fire;
+    const snap = await getDocs(query(collection(db_fire, 'resultados_simulados'), where('provaId','==',provaId)));
+    resultados = snap.docs.map(d=>d.data()).sort((a,b)=> b.pontos!==a.pontos ? b.pontos-a.pontos : a.tempoAtivo-b.tempoAtivo);
+  } catch(e) { resultados = []; }
+
+  const medalhas = ['🥇','🥈','🥉'];
+  body.innerHTML = `
+    <div style="max-width:600px;margin:0 auto;padding:20px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button>
+          <h2 style="font-size:16px;font-weight:700">🏆 ${prova.nome}</h2>
+        </div>
+        ${isAdmin()?`<button class="btn btn-primary btn-sm" onclick="gerarCardRanking('${provaId}')">📤 Gerar Card</button>`:''}
+      </div>
+      ${resultados.length ? resultados.map((r,i)=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:${i<3?'var(--card)':'var(--surface)'}">
+          <span style="font-size:22px;width:32px;text-align:center">${medalhas[i]||`${i+1}º`}</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${r.nomeAluno||'Aluno'}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${r.acertos}/${r.total} acertos · ${r.notaPonderada} pts · ${Math.floor(r.tempoAtivo/60)}min</div>
+          </div>
+          <div style="font-size:18px;font-weight:800;color:${i===0?'#d97706':i===1?'#6b7280':i===2?'#b45309':'var(--text)'}">
+            ${Math.round(r.acertos/r.total*100)}%
+          </div>
+        </div>`).join('') : '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">Nenhum resultado ainda.</p>'}
+    </div>`;
+}
+
+function gerarCardRanking(provaId) {
+  const prova = (db.provas||[]).find(p=>p.id===provaId);
+  toast('Gerando card...', 'info');
+  // Abre ranking e depois gera via canvas
+  verRankingSimulado(provaId);
+  setTimeout(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 800; canvas.height = 600;
+    const ctx = canvas.getContext('2d');
+    // Fundo
+    ctx.fillStyle = '#1A2744';
+    ctx.fillRect(0,0,800,600);
+    // Header
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 28px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('🎖 PAPIRO TÁTICO', 400, 60);
+    ctx.font = '18px Arial';
+    ctx.fillStyle = '#8FA8D8';
+    ctx.fillText('RANKING — ' + (prova?.nome||'').toUpperCase(), 400, 95);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(40, 110, 720, 2);
+    // Data
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#8FA8D8';
+    ctx.fillText(new Date().toLocaleDateString('pt-BR'), 400, 140);
+    // Nota de rodapé
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#4A6490';
+    ctx.fillText('papirotatico.com.br', 400, 570);
+    // Download
+    const link = document.createElement('a');
+    link.download = `ranking-${prova?.nome||'simulado'}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+    toast('Card gerado! ✅', 'success');
+  }, 500);
+}
+
+function verResultadoSimulado(provaId) {
+  const hist = (db.historico_simulados||[]).find(h=>h.provaId===provaId);
+  if (!hist) { toast('Resultado não encontrado!', 'error'); return; }
+  const prova = (db.provas||[]).find(p=>p.id===provaId);
+  const pct = Math.round(hist.acertos/hist.total*100);
+  const body = document.getElementById('simulados-body');
+  body.innerHTML = `<div style="max-width:600px;margin:20px auto;padding:0 16px;text-align:center">
+    <button class="btn btn-ghost btn-sm" onclick="renderSimulados()" style="margin-bottom:16px">← Voltar</button>
+    <div style="font-size:44px">${pct>=70?'🏆':pct>=50?'📊':'📚'}</div>
+    <h2 style="font-size:18px;font-weight:700;margin:8px 0">${prova?.nome||''}</h2>
+    <div style="font-size:42px;font-weight:900;color:${pct>=70?'var(--green)':pct>=50?'#d97706':'var(--red)'}">${pct}%</div>
+    <div style="color:var(--text-muted)">${hist.acertos}/${hist.total} acertos · ${hist.notaPonderada} pts</div>
+    <div style="margin-top:16px;font-size:13px;color:var(--text-muted)">Realizado em ${new Date(hist.realizadoEm).toLocaleDateString('pt-BR')}</div>
+  </div>`;
 }
 
 // =============================================
