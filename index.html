@@ -12,7 +12,7 @@
 // =============================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, orderBy, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, addDoc, query, orderBy, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAUcCUeXWqIZtzGpDvYLbUGkHI9MnnXtm0",
@@ -32,7 +32,7 @@ const ADMIN_EMAIL = "bizuap.app@gmail.com";
 const DEVICE_KEY = 'pt_device_' + (Math.random().toString(36).slice(2,10));
 
 // Expõe funções globais para os onclick do HTML
-window._fire = { auth, db_fire, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, orderBy, serverTimestamp, deleteDoc };
+window._fire = { auth, db_fire, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, getDocs, addDoc, query, orderBy, serverTimestamp, deleteDoc };
 
 // =============================================
 // CONTROLE DE AUTH
@@ -4945,11 +4945,16 @@ async function enviarReporte() {
     resolvido: false,
     criadoEm: serverTimestamp(),
   };
-  const ref = await addDoc(collection(db_fire, 'reportes'), reporte);
-  db.reportes.push({ id: ref.id, ...reporte });
-  renderBadgeReportes();
-  document.getElementById('modal-reporte').classList.remove('show');
-  toast('Reporte enviado! Obrigado pela contribuicao.', 'success');
+  try {
+    const ref = await addDoc(collection(db_fire, 'reportes'), reporte);
+    db.reportes.push({ id: ref.id, ...reporte });
+    renderBadgeReportes();
+    document.getElementById('modal-reporte').classList.remove('show');
+    toast('Reporte enviado! Obrigado pela contribuicao.', 'success');
+  } catch(e) {
+    console.error('Erro ao enviar reporte:', e);
+    toast('Erro ao enviar reporte: ' + e.message, 'error');
+  }
 }
 
 function renderReportes() {
