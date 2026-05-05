@@ -3663,7 +3663,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, excluirProva, verRankingSimulado, gerarCardRanking, verResultadoSimulado,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, verRankingSimulado, gerarCardRanking, verResultadoSimulado,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -3898,6 +3898,7 @@ async function gerarSimuladoAutomatico() {
 
 function mostrarRevisaoSimulado(questoes, cfg) {
   const body = document.getElementById('simulados-body');
+  const btnStyle = 'border:1px solid var(--border);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px;background:var(--surface)';
   body.innerHTML = `
     <div style="max-width:760px;margin:0 auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
@@ -3907,25 +3908,103 @@ function mostrarRevisaoSimulado(questoes, cfg) {
         </div>
         <button class="btn btn-primary" onclick="salvarSimulado()">💾 Salvar Simulado</button>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Revise as questões. Use 🔄 para trocar por outra da mesma matéria ou ❌ para remover.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">🔄 Troca aleatória · 🔍 Escolher do banco · 👁 Ver detalhes · ❌ Remover</p>
       <div id="sim-revisao-list">
         ${questoes.map((q, i) => `
           <div id="sim-rev-${i}" style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:8px;background:var(--card)">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
               <div style="flex:1">
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${q.assunto?.split('(')[0].trim()||''} ${q.topico?'· '+q.topico:''} · Peso: ${q._peso} ${q.codigo?'· '+q.codigo:''}</div>
-                <div style="font-size:13px;color:var(--text);line-height:1.5">${(q.enunciado||'').substring(0,150)}${q.enunciado?.length>150?'...':''}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">
+                  ${i+1}. ${q.assunto?.split('(')[0].trim()||''} ${q.topico?'· <strong>'+q.topico+'</strong>':''} · Peso: ${q._peso} ${q.codigo?'· '+q.codigo:''}
+                </div>
+                <div style="font-size:13px;color:var(--text);line-height:1.5">${(q.enunciado||'').substring(0,150)}${(q.enunciado||'').length>150?'...':''}</div>
               </div>
-              <div style="display:flex;gap:5px;flex-shrink:0">
-                <button onclick="trocarQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Trocar" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 8px;cursor:pointer;font-size:13px">🔄</button>
-                <button onclick="removerQuestaoSimulado(${i})" title="Remover" style="background:#FCEBEB;border:1px solid #F7C1C1;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:13px">❌</button>
+              <div style="display:flex;gap:5px;flex-shrink:0;flex-direction:column;align-items:center">
+                <div style="display:flex;gap:5px">
+                  <button onclick="trocarQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Trocar aleatório" style="${btnStyle}">🔄</button>
+                  <button onclick="escolherQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Escolher do banco" style="${btnStyle}">🔍</button>
+                </div>
+                <div style="display:flex;gap:5px">
+                  <button onclick="expandirQuestaoSimulado(${i})" title="Ver detalhes" style="${btnStyle}">👁</button>
+                  <button onclick="removerQuestaoSimulado(${i})" title="Remover" style="background:#FCEBEB;border:1px solid #F7C1C1;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px">❌</button>
+                </div>
               </div>
+            </div>
+            <div id="sim-expand-${i}" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+              <p style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:12px">${q.enunciado||''}</p>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                ${['A','B','C','D','E'].filter(l=>q.opcoes&&q.opcoes[l]).map(l=>`
+                  <div style="display:flex;gap:10px;padding:8px 12px;border-radius:6px;border:1px solid ${l===q.gabarito?'var(--green)':'var(--border)'};background:${l===q.gabarito?'var(--green-light)':'var(--surface)'}">
+                    <span style="font-weight:700;color:${l===q.gabarito?'var(--green)':'var(--text-muted)'};min-width:18px">${l}</span>
+                    <span style="font-size:13px;color:var(--text)">${q.opcoes[l]}</span>
+                    ${l===q.gabarito?'<span style="margin-left:auto;font-size:11px;color:var(--green);font-weight:600">✅ GABARITO</span>':''}
+                  </div>`).join('')}
+              </div>
+              ${q.comentario?`<div style="background:var(--surface);border-radius:8px;padding:12px;font-size:13px;color:var(--text);line-height:1.6">${renderMd(q.comentario)}</div>`:'<div style="font-size:12px;color:var(--text-muted);font-style:italic">Sem comentário cadastrado.</div>'}
             </div>
           </div>`).join('')}
       </div>
     </div>`;
-  // Salva estado
   window._simRascunho = { questoes: [...questoes], cfg };
+}
+
+function expandirQuestaoSimulado(idx) {
+  const el = document.getElementById(`sim-expand-${idx}`);
+  if (!el) return;
+  const aberto = el.style.display !== 'none';
+  el.style.display = aberto ? 'none' : 'block';
+}
+
+function escolherQuestaoSimulado(idx, materia) {
+  if (!window._simRascunho) return;
+  const idsAtuais = window._simRascunho.questoes.map(q=>q.id);
+  const pool = db.questoes.filter(q => q.assunto === materia).sort((a,b)=>(a.topico||'').localeCompare(b.topico||''));
+  if (!pool.length) { toast('Nenhuma questão disponível nesta matéria!', 'error'); return; }
+
+  // Cria modal de escolha
+  const modal = document.createElement('div');
+  modal.id = 'sim-escolha-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--card);border-radius:12px;width:100%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text)">Escolher questão — ${materia.split('(')[0].trim()}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${pool.length} questões disponíveis · ✅ = já no simulado</div>
+        </div>
+        <button onclick="document.getElementById('sim-escolha-modal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-muted)">✕</button>
+      </div>
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <input class="form-input" placeholder="Buscar questão..." oninput="filtrarEscolhaSimulado(this.value)" style="font-size:13px;width:100%">
+      </div>
+      <div id="sim-escolha-lista" style="overflow-y:auto;flex:1;padding:10px 16px">
+        ${pool.map((q,i) => {
+          const jaNaLista = idsAtuais.includes(q.id);
+          return `<div class="sim-escolha-item" data-search="${(q.enunciado||'').toLowerCase()} ${(q.topico||'').toLowerCase()}" onclick="${jaNaLista?'':'confirmarEscolhaSimulado('+idx+',\''+q.id+'\')'}" style="padding:10px;border:1px solid ${jaNaLista?'var(--green)':'var(--border)'};border-radius:8px;margin-bottom:6px;cursor:${jaNaLista?'default':'pointer'};background:${jaNaLista?'var(--green-light)':'var(--surface)'};opacity:${jaNaLista?'0.7':'1'}">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px">${q.topico||''} ${q.codigo?'· '+q.codigo:''} ${jaNaLista?'· <strong style=\'color:var(--green)\'>✅ No simulado</strong>':''}</div>
+            <div style="font-size:13px;color:var(--text);line-height:1.4">${(q.enunciado||'').substring(0,120)}${(q.enunciado||'').length>120?'...':''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function filtrarEscolhaSimulado(termo) {
+  const items = document.querySelectorAll('.sim-escolha-item');
+  const t = termo.toLowerCase();
+  items.forEach(el => { el.style.display = el.dataset.search.includes(t) ? 'block' : 'none'; });
+}
+
+function confirmarEscolhaSimulado(idx, qId) {
+  if (!window._simRascunho) return;
+  const nova = db.questoes.find(q => q.id === qId);
+  if (!nova) return;
+  const peso = window._simRascunho.questoes[idx]._peso;
+  window._simRascunho.questoes[idx] = { ...nova, _peso: peso };
+  document.getElementById('sim-escolha-modal')?.remove();
+  mostrarRevisaoSimulado(window._simRascunho.questoes, window._simRascunho.cfg);
 }
 
 function trocarQuestaoSimulado(idx, materia) {
