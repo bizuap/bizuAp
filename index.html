@@ -3898,7 +3898,84 @@ async function gerarSimuladoAutomatico() {
 
 function mostrarRevisaoSimulado(questoes, cfg) {
   const body = document.getElementById('simulados-body');
-  const btnStyle = 'border:1px solid var(--border);border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px;background:var(--surface)';
+  const btnStyle = 'width:30px;height:30px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px';
+  const btnDel = 'width:30px;height:30px;border-radius:6px;border:0.5px solid #F7C1C1;background:#FCEBEB;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px';
+
+  // Cores por matéria
+  const cores = [
+    {bg:'#E6F1FB',cl:'#185FA5',tb:'#E6F1FB',tc:'#185FA5'},
+    {bg:'#EAF3DE',cl:'#3B6D11',tb:'#EAF3DE',tc:'#3B6D11'},
+    {bg:'#FAEEDA',cl:'#854F0B',tb:'#FAEEDA',tc:'#854F0B'},
+    {bg:'#FCEBEB',cl:'#A32D2D',tb:'#FCEBEB',tc:'#A32D2D'},
+    {bg:'#F0E6FF',cl:'#6B21A8',tb:'#F0E6FF',tc:'#6B21A8'},
+  ];
+
+  // Agrupa por matéria mantendo ordem original
+  const grupos = [];
+  const mapaGrupos = {};
+  questoes.forEach((q, i) => {
+    const mat = q.assunto || 'Sem matéria';
+    if (!mapaGrupos[mat]) {
+      const corIdx = grupos.length % cores.length;
+      mapaGrupos[mat] = { mat, cor: cores[corIdx], questoes: [], peso: q._peso };
+      grupos.push(mapaGrupos[mat]);
+    }
+    mapaGrupos[mat].questoes.push({ q, i });
+  });
+
+  let numGlobal = 0;
+  const gruposHTML = grupos.map(g => {
+    const matAbrev = g.mat.replace(/\(.*\)/g,'').trim().split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase().substring(0,2);
+    const questoesHTML = g.questoes.map(({q, i}) => {
+      numGlobal++;
+      const num = numGlobal;
+      return `<div id="sim-rev-${i}" style="border:0.5px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:6px;background:var(--card)">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:11px;font-weight:500;color:var(--text-muted);min-width:20px;margin-top:2px">${num}.</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">
+              ${q.topico?`<span style="background:${g.cor.tb};color:${g.cor.tc};padding:1px 8px;border-radius:999px;font-size:10px;font-weight:500">${q.topico}</span>`:''}
+              ${q.codigo?`<span style="font-size:10px;color:var(--text-muted)">${q.codigo}</span>`:''}
+            </div>
+            <div style="font-size:13px;color:var(--text);line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.enunciado||''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+            <div style="display:flex;gap:4px">
+              <button onclick="trocarQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Trocar aleatório" style="${btnStyle}">🔄</button>
+              <button onclick="escolherQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Escolher do banco" style="${btnStyle}">🔍</button>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button onclick="expandirQuestaoSimulado(${i})" title="Ver detalhes" style="${btnStyle}">👁</button>
+              <button onclick="removerQuestaoSimulado(${i})" title="Remover" style="${btnDel}">❌</button>
+            </div>
+          </div>
+        </div>
+        <div id="sim-expand-${i}" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+          <p style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:12px">${q.enunciado||''}</p>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+            ${['A','B','C','D','E'].filter(l=>q.opcoes&&q.opcoes[l]).map(l=>`
+              <div style="display:flex;gap:10px;padding:8px 12px;border-radius:6px;border:1px solid ${l===q.gabarito?'var(--green)':'var(--border)'};background:${l===q.gabarito?'var(--green-light)':'var(--surface)'}">
+                <span style="font-weight:700;color:${l===q.gabarito?'var(--green)':'var(--text-muted)'};min-width:18px">${l}</span>
+                <span style="font-size:13px;color:var(--text);flex:1">${q.opcoes[l]}</span>
+                ${l===q.gabarito?'<span style="font-size:11px;color:var(--green);font-weight:600;flex-shrink:0">✅ Gabarito</span>':''}
+              </div>`).join('')}
+          </div>
+          ${q.comentario?`<div style="background:var(--surface);border-radius:8px;padding:12px;font-size:13px;color:var(--text);line-height:1.6">${renderMd(q.comentario)}</div>`:'<div style="font-size:12px;color:var(--text-muted);font-style:italic">Sem comentário cadastrado.</div>'}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border-radius:8px;border:0.5px solid var(--border);margin-bottom:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:${g.cor.bg};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:${g.cor.cl};flex-shrink:0">${matAbrev}</div>
+        <span style="flex:1;font-size:13px;font-weight:500;color:var(--text)">${g.mat}</span>
+        <span style="font-size:11px;color:var(--text-muted);background:var(--card);border:0.5px solid var(--border);padding:2px 8px;border-radius:999px">${g.questoes.length} questão(ões)</span>
+        <span style="font-size:11px;color:#854F0B;background:#FAEEDA;padding:2px 8px;border-radius:999px">Peso ${g.peso}</span>
+      </div>
+      ${questoesHTML}
+    </div>`;
+  });
+
   body.innerHTML = `
     <div style="max-width:760px;margin:0 auto">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
@@ -3908,42 +3985,8 @@ function mostrarRevisaoSimulado(questoes, cfg) {
         </div>
         <button class="btn btn-primary" onclick="salvarSimulado()">💾 Salvar Simulado</button>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">🔄 Troca aleatória · 🔍 Escolher do banco · 👁 Ver detalhes · ❌ Remover</p>
-      <div id="sim-revisao-list">
-        ${questoes.map((q, i) => `
-          <div id="sim-rev-${i}" style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:8px;background:var(--card)">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-              <div style="flex:1">
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">
-                  ${i+1}. ${q.assunto?.split('(')[0].trim()||''} ${q.topico?'· <strong>'+q.topico+'</strong>':''} · Peso: ${q._peso} ${q.codigo?'· '+q.codigo:''}
-                </div>
-                <div style="font-size:13px;color:var(--text);line-height:1.5">${(q.enunciado||'').substring(0,150)}${(q.enunciado||'').length>150?'...':''}</div>
-              </div>
-              <div style="display:flex;gap:5px;flex-shrink:0;flex-direction:column;align-items:center">
-                <div style="display:flex;gap:5px">
-                  <button onclick="trocarQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Trocar aleatório" style="${btnStyle}">🔄</button>
-                  <button onclick="escolherQuestaoSimulado(${i},'${q.assunto?.replace(/'/g,"\\'")}')" title="Escolher do banco" style="${btnStyle}">🔍</button>
-                </div>
-                <div style="display:flex;gap:5px">
-                  <button onclick="expandirQuestaoSimulado(${i})" title="Ver detalhes" style="${btnStyle}">👁</button>
-                  <button onclick="removerQuestaoSimulado(${i})" title="Remover" style="background:#FCEBEB;border:1px solid #F7C1C1;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:13px">❌</button>
-                </div>
-              </div>
-            </div>
-            <div id="sim-expand-${i}" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
-              <p style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:12px">${q.enunciado||''}</p>
-              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-                ${['A','B','C','D','E'].filter(l=>q.opcoes&&q.opcoes[l]).map(l=>`
-                  <div style="display:flex;gap:10px;padding:8px 12px;border-radius:6px;border:1px solid ${l===q.gabarito?'var(--green)':'var(--border)'};background:${l===q.gabarito?'var(--green-light)':'var(--surface)'}">
-                    <span style="font-weight:700;color:${l===q.gabarito?'var(--green)':'var(--text-muted)'};min-width:18px">${l}</span>
-                    <span style="font-size:13px;color:var(--text)">${q.opcoes[l]}</span>
-                    ${l===q.gabarito?'<span style="margin-left:auto;font-size:11px;color:var(--green);font-weight:600">✅ GABARITO</span>':''}
-                  </div>`).join('')}
-              </div>
-              ${q.comentario?`<div style="background:var(--surface);border-radius:8px;padding:12px;font-size:13px;color:var(--text);line-height:1.6">${renderMd(q.comentario)}</div>`:'<div style="font-size:12px;color:var(--text-muted);font-style:italic">Sem comentário cadastrado.</div>'}
-            </div>
-          </div>`).join('')}
-      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">🔄 Troca aleatória · 🔍 Escolher do banco · 👁 Ver detalhes · ❌ Remover</p>
+      <div id="sim-revisao-list">${gruposHTML.join('')}</div>
     </div>`;
   window._simRascunho = { questoes: [...questoes], cfg };
 }
