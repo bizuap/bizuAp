@@ -6581,7 +6581,14 @@ async function confirmarMesclarMaterias() {
 
   const questoesAfetadas = db.questoes.filter(q => q.assunto === origem);
   if (!questoesAfetadas.length) {
-    // Só remove a matéria da lista
+    // Remove do Firestore e da lista local
+    try {
+      const { db_fire, collection, getDocs, doc, deleteDoc } = window._fire;
+      const snapMat = await getDocs(collection(db_fire, 'materias'));
+      for (const d of snapMat.docs) {
+        if (d.data().nome === origem) { await deleteDoc(doc(db_fire, 'materias', d.id)); break; }
+      }
+    } catch(e) { console.error('Erro ao deletar matéria:', e); }
     ASSUNTOS = ASSUNTOS.filter(a => a !== origem);
     localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
     document.getElementById('modal-mesclar-materia').classList.remove('show');
@@ -6593,7 +6600,7 @@ async function confirmarMesclarMaterias() {
   const btn = document.getElementById('btn-confirmar-mesclar');
   if (btn) { btn.disabled = true; btn.textContent = `Mesclando ${questoesAfetadas.length} questões...`; }
 
-  const { db_fire, doc, updateDoc } = window._fire;
+  const { db_fire, doc, updateDoc, deleteDoc, collection, getDocs, query, where } = window._fire;
   let ok = 0;
   for (const q of questoesAfetadas) {
     try {
@@ -6603,7 +6610,18 @@ async function confirmarMesclarMaterias() {
     } catch(e) { console.error('Erro ao mesclar questão:', q.id, e); }
   }
 
-  // Remove a matéria de origem da lista
+  // Remove a matéria de origem do Firestore
+  try {
+    const snapMat = await getDocs(collection(db_fire, 'materias'));
+    for (const d of snapMat.docs) {
+      if (d.data().nome === origem) {
+        await deleteDoc(doc(db_fire, 'materias', d.id));
+        break;
+      }
+    }
+  } catch(e) { console.error('Erro ao deletar matéria do Firestore:', e); }
+
+  // Remove da lista local
   ASSUNTOS = ASSUNTOS.filter(a => a !== origem);
   localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
 
