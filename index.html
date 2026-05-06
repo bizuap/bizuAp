@@ -129,8 +129,10 @@ window.fazerCadastro = async function() {
     }
     // Salva no Firestore — com rollback se falhar
     try {
+      const apelido = document.getElementById('cad-apelido')?.value.trim() || '';
       await setDoc(doc(db_fire, 'usuarios', cred.user.uid), {
         nome, email, ativo: true,
+        apelido: apelido || nome.split(' ')[0],
         validade: codigoData.validade,
         plano: codigoData.plano || 'mensal',
         codigoUsado: codigo,
@@ -650,6 +652,7 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
         <input class="auth-input" type="password" id="cad-senha" placeholder="Crie uma senha (mín. 6 caracteres)" style="padding-right:42px">
         <button type="button" onclick="var i=document.getElementById('cad-senha');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-muted)">👁</button>
       </div>
+      <input class="auth-input" type="text" id="cad-apelido" placeholder="Apelido no ranking (opcional — ex: Guerreiro47)">
       <input class="auth-input" type="text" id="cad-codigo" placeholder="Código de acesso (ex: ABCD-1234)" style="text-transform:uppercase;letter-spacing:2px;font-weight:700">
       <button class="auth-btn" id="btn-cadastrar" onclick="fazerCadastro()">Criar Conta</button>
     </div>
@@ -1709,7 +1712,14 @@ Exemplos:
             • Modal 🗑 Apagar com opção de apagar só o simulado ou tudo (simulado + questões)<br>
             • 📄 PDF Prova — prova limpa com identidade visual Papiro Tático para imprimir<br>
             • 📄 PDF Gabarito Comentado — gabarito rápido + questões com alternativa correta destacada e comentários<br>
-            • Roadmap adicionado na aba Sistema com item pendente: Compartilhamento e Funil de Conversão
+            • Roadmap adicionado na aba Sistema com item pendente: Compartilhamento e Funil de Conversão<br>
+            • <b>Modo Oficial de Simulados</b> — janela de realização controlada, gabarito liberado pelo admin, countdown para início<br>
+            • <b>Apelido no cadastro</b> — campo opcional, fallback para primeiro nome, usado em todos os rankings<br>
+            • <b>Ranking com apelidos</b> — público mostra apelido, admin vê nome real + apelido<br>
+            • <b>Polling 30s no ranking</b> — atualização automática enquanto admin está na tela<br>
+            • <b>Sempre salvar resultado no Firestore</b> — independente de prazo do rank<br>
+            • <b>Botão Liberar Gabarito</b> — admin libera manualmente antes da data automática<br>
+            • <b>db.user</b> definido na init com uid, nome, apelido e dados do Firestore
           </div>
           <div style="background:var(--surface);padding:10px 14px;border-top:1px solid var(--border)">
             <div style="font-size:12px;font-weight:700;color:var(--text-muted)">v1.0 — Versão inicial</div>
@@ -1794,6 +1804,48 @@ Exemplos:
       <div style="margin-bottom:20px">
         <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🗺 Roadmap</p>
         <div style="display:flex;flex-direction:column;gap:8px">
+          <details style="border:1px solid #d1fae5;border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:#f0fdf4">🏆 Simulado Oficial com Ranking em Tempo Real <span style="font-size:11px;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;margin-left:6px;font-weight:600">✅ IMPLEMENTADO</span></summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid #d1fae5">
+              <b>Modo Livre</b> — aluno resolve quando quiser, vê gabarito na hora. Para estudo diário e provas anteriores.<br>
+              <b>Modo Oficial</b> — janela de realização controlada, gabarito liberado pelo admin. Simula o dia da prova.<br><br>
+              <b>O que foi implementado:</b><br>
+              • Campos Modo Oficial no formulário de criação (data início, fim, liberação)<br>
+              • Countdown para início da janela (aluno vê timer regressivo)<br>
+              • Tela "Aguardando gabarito" após entrega no Modo Oficial<br>
+              • Botão "🔓 Liberar Gabarito" manual para o admin<br>
+              • Ranking com apelidos — público mostra apelido, admin vê nome real<br>
+              • Polling 30s no ranking enquanto admin está na tela<br>
+              • Campo apelido no cadastro (opcional, fallback para primeiro nome)<br>
+              • Sempre salva resultado no Firestore (independente de prazo)<br>
+              • db.user definido na init com uid, nome, apelido e dados completos<br>
+              • Badge "🏆 Ranking ao Vivo" substituindo o ranking estático
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">🎨 Redesign dos PDFs — Inspiração Projeto Caveira</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>Contexto:</b> Melhorar o visual e a organização dos PDFs gerados (Prova Limpa e Gabarito Comentado) usando como referência o padrão do Projeto Caveira e outros materiais de concursos policiais de referência.<br><br>
+              <b>O que analisar do Projeto Caveira:</b><br>
+              • Layout e tipografia dos simulados em PDF<br>
+              • Organização da capa (informações, cores, hierarquia visual)<br>
+              • Estrutura das questões (numeração, espaçamento, campo de resposta)<br>
+              • Gabarito comentado: como apresentam a alternativa correta e os comentários<br>
+              • Gabarito rápido: tabela ou grade no início do PDF<br>
+              • Rodapé, cabeçalho e paginação<br><br>
+              <b>Melhorias planejadas:</b><br>
+              • Revisar tipografia, espaçamento e hierarquia visual<br>
+              • Adicionar campo de respostas (bolinha A B C D E) na prova limpa<br>
+              • Melhorar gabarito rápido — tabela mais compacta e legível<br>
+              • Comentários mais destacados e organizados no gabarito<br>
+              • Cabeçalho por página com nome da prova e paginação<br>
+              • Versão mobile-friendly para visualizar no celular sem imprimir<br><br>
+              <b>Referências:</b> Projeto Caveira (caveira.com) — simulados PDF com gabarito comentado por professores especializados em concursos policiais.<br><br>
+              <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">⏳ PENDENTE — implementar em sessão futura</span>
+            </div>
+          </details>
+
           <details open style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">📲 Compartilhamento e Funil de Conversão</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
@@ -1874,6 +1926,33 @@ Exemplos:
               5. Para adaptar/atualizar, exporte e traga para o chat com Claude
             </div>
           </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como criar um Simulado Oficial</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. Na aba <b>Simulados</b>, clique em "+ Montar Simulado"<br>
+              2. Preencha nome, tempo e distribuição de matérias<br>
+              3. Ative o toggle <b>🏆 Modo Oficial</b><br>
+              4. O sistema sugere automaticamente as datas (próximo sábado às 9h, 4h de duração, gabarito 1h após)<br>
+              5. Ajuste as datas conforme necessário e clique em Gerar<br>
+              6. No dia do simulado, os alunos veem o countdown até o início<br>
+              7. Após todos entregarem, clique em <b>🔓 Liberar Gabarito</b> no card<br>
+              8. Alunos veem o resultado + ranking com apelidos simultaneamente
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como acompanhar o ranking em tempo real</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. Na aba <b>Simulados</b>, clique em <b>🏆 Ranking ao Vivo</b> no card da prova<br>
+              2. O sistema busca os resultados do Firestore e exibe o ranking<br>
+              3. A tela atualiza automaticamente a cada 30 segundos<br>
+              4. Admin vê: apelido + nome real, acertos, tempo e posição<br>
+              5. Alunos veem: apelido, acertos e porcentagem<br>
+              6. O resultado do próprio aluno fica destacado em azul<br>
+              7. Feche a tela para encerrar o polling
+            </div>
+          </details>
+
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como gerar e distribuir o PDF de uma prova</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
@@ -2522,6 +2601,14 @@ async function init() {
     document.getElementById('settings-brevo-email').value = db.settings.brevoEmail;
   if (db.settings.brevoNome)
     document.getElementById('settings-brevo-nome').value = db.settings.brevoNome;
+  // Monta db.user com dados do Auth + Firestore
+  db.user = {
+    uid: window._currentUser?.uid,
+    email: window._currentUser?.email,
+    nome: window._userData?.nome || window._currentUser?.email || 'Aluno',
+    apelido: window._userData?.apelido || (window._userData?.nome||'').split(' ')[0] || 'Aluno',
+    ...(window._userData || {})
+  };
   atualizarSidebarUser();
 }
 
@@ -2870,6 +2957,12 @@ function getPoolFiltrado() {
 }
 
 function renderQuizTec() {
+  // Se estiver em modo revisão de prova, preserva o pool já definido
+  if (window._tecModoRevisao) {
+    window._tecModoRevisao = false;
+    renderTecQuestao();
+    return;
+  }
   _tecPool = getPoolFiltrado();
   _tecIdx = 0;
   _tecHistory = [];
@@ -4467,7 +4560,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito, toggleModoOficial, liberarGabaritoManual, verRankingSimuladoLive, verificarJanelaOficial, gabaritoLiberado,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -4537,7 +4630,8 @@ function renderSimulados() {
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;letter-spacing:.3px">🔑 Opções do administrador</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="revisarProvaNoTEC('${p.id}')">👁 Revisar Questões</button>
-          <button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>
+          <button class="btn btn-ghost btn-sm" onclick="verRankingSimuladoLive('${p.id}')">🏆 Ranking ao Vivo</button>
+          ${p.modoOficial && !p.gabaritoLiberado ? `<button class="btn btn-ghost btn-sm" style="color:#d97706;border-color:#d97706" onclick="liberarGabaritoManual('${p.id}')">🔓 Liberar Gabarito</button>` : ''}
           <button class="btn btn-ghost btn-sm" style="color:#059669;border-color:#059669" onclick="gerarPDFProva('${p.id}')">📄 PDF Prova</button>
           <button class="btn btn-ghost btn-sm" style="color:#7c3aed;border-color:#7c3aed" onclick="gerarPDFGabarito('${p.id}')">📄 PDF Gabarito</button>
           <button class="btn btn-danger btn-sm" onclick="abrirModalApagarProva('${p.id}')">🗑 Apagar</button>
@@ -4580,8 +4674,9 @@ function renderSimulados() {
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;letter-spacing:.3px">🔑 Opções do administrador</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="revisarProvaNoTEC('${p.id}')">👁 Revisar Questões</button>
-          <button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>
+          <button class="btn btn-ghost btn-sm" onclick="verRankingSimuladoLive('${p.id}')">🏆 Ranking ao Vivo</button>
           <button class="btn btn-ghost btn-sm" style="background:var(--blue-light,#eff6ff);color:var(--blue);border-color:var(--blue)" onclick="abrirTransformarSimulado('${p.id}')">⚙ Transformar em Simulado</button>
+          ${p.modoOficial && !p.gabaritoLiberado ? `<button class="btn btn-ghost btn-sm" style="color:#d97706;border-color:#d97706" onclick="liberarGabaritoManual('${p.id}')">🔓 Liberar Gabarito</button>` : ''}
           <button class="btn btn-ghost btn-sm" style="color:#059669;border-color:#059669" onclick="gerarPDFProva('${p.id}')">📄 PDF Prova</button>
           <button class="btn btn-ghost btn-sm" style="color:#7c3aed;border-color:#7c3aed" onclick="gerarPDFGabarito('${p.id}')">📄 PDF Gabarito</button>
           <button class="btn btn-danger btn-sm" onclick="abrirModalApagarProva('${p.id}')">🗑 Apagar</button>
@@ -4687,6 +4782,24 @@ function abrirMontarSimulado() {
           <div class="form-group"><label>Prazo do Ranking</label>
             <input class="form-input" id="sim-prazo" type="datetime-local"></div>
         </div>
+        <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">🏆 Modo Oficial</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Janela de realização controlada. Gabarito liberado pelo admin após o prazo.</div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="sim-modo-oficial" onchange="toggleModoOficial()" style="width:18px;height:18px;cursor:pointer">
+              <span style="font-size:12px;color:var(--text-muted)">Ativar</span>
+            </label>
+          </div>
+          <div id="sim-oficial-campos" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group"><label>Fim da Janela</label>
+              <input class="form-input" id="sim-fim" type="datetime-local"></div>
+            <div class="form-group"><label>Liberação do Gabarito</label>
+              <input class="form-input" id="sim-liberacao" type="datetime-local"></div>
+          </div>
+        </div>
       </div>
       <div class="form-section">
         <h3>Matérias, Questões e Peso</h3>
@@ -4736,6 +4849,9 @@ async function gerarSimuladoAutomatico() {
   const tempo = parseInt(document.getElementById('sim-tempo')?.value) || 60;
   const inicio = document.getElementById('sim-inicio')?.value;
   const prazo = document.getElementById('sim-prazo')?.value;
+  const modoOficial = document.getElementById('sim-modo-oficial')?.checked || false;
+  const fim = document.getElementById('sim-fim')?.value;
+  const liberacao = document.getElementById('sim-liberacao')?.value;
   const materias = ASSUNTOS || [];
 
   // Coleta configuração por matéria
@@ -5023,6 +5139,10 @@ async function salvarSimulado() {
     config: cfg.config,
     dataInicio: cfg.inicio ? new Date(cfg.inicio).getTime() : Date.now(),
     dataLimiteRank: cfg.prazo ? new Date(cfg.prazo).getTime() : null,
+    modoOficial: cfg.modoOficial || false,
+    dataFim: cfg.fim ? new Date(cfg.fim).getTime() : null,
+    dataLiberacaoGabarito: cfg.liberacao ? new Date(cfg.liberacao).getTime() : null,
+    gabaritoLiberado: !cfg.modoOficial,
     criadoEm: serverTimestamp(),
   };
   await setDoc(doc(db_fire, 'provas', provaId), dadosProva);
@@ -5503,8 +5623,8 @@ function revisarProvaNoTEC(provaId) {
   _tecAcertos = 0;
   _tecErros = 0;
   _tecModo = 'revisao_prova';
+  window._tecModoRevisao = true;
   showTab('quiz');
-  renderTecQuestao();
   toast('Revisando: ' + prova.nome + ' (' + _tecPool.length + ' questões)', 'info');
 }
 
@@ -5742,6 +5862,92 @@ function gerarPDFGabarito(provaId) {
   win.document.close();
 }
 
+// ============================================================
+// MODO OFICIAL
+// ============================================================
+function toggleModoOficial() {
+  const checked = document.getElementById('sim-modo-oficial')?.checked;
+  const campos = document.getElementById('sim-oficial-campos');
+  if (campos) campos.style.display = checked ? 'grid' : 'none';
+  // Sugerir datas automáticas
+  if (checked) {
+    const agora = new Date();
+    const inicio = document.getElementById('sim-inicio');
+    const fim = document.getElementById('sim-fim');
+    const liberacao = document.getElementById('sim-liberacao');
+    if (inicio && !inicio.value) {
+      const d = new Date(agora); d.setHours(9,0,0,0); d.setDate(d.getDate() + (6 - d.getDay() + 7) % 7 || 7);
+      inicio.value = d.toISOString().slice(0,16);
+    }
+    if (fim && !fim.value) {
+      const d = new Date(document.getElementById('sim-inicio').value || agora);
+      d.setHours(d.getHours() + 4);
+      fim.value = d.toISOString().slice(0,16);
+    }
+    if (liberacao && !liberacao.value) {
+      const d = new Date(document.getElementById('sim-fim')?.value || agora);
+      d.setHours(d.getHours() + 1);
+      liberacao.value = d.toISOString().slice(0,16);
+    }
+  }
+}
+
+// Badge "👥 X concluídos" nos cards
+async function carregarConcluidosProva(provaId) {
+  try {
+    const { db_fire, collection, getDocs, query, where } = window._fire;
+    const snap = await getDocs(query(collection(db_fire, 'resultados_simulados'), where('provaId','==',provaId)));
+    return snap.size;
+  } catch(e) { return 0; }
+}
+
+// Verificar se janela do Modo Oficial está aberta
+function verificarJanelaOficial(prova) {
+  if (!prova.modoOficial) return { pode: true, status: 'livre' };
+  const agora = Date.now();
+  const inicio = prova.dataInicio || 0;
+  const fim = prova.dataFim || Infinity;
+  if (agora < inicio) return { pode: false, status: 'aguardando', inicio };
+  if (agora > fim) return { pode: false, status: 'encerrado' };
+  return { pode: true, status: 'aberto' };
+}
+
+// Verificar se gabarito foi liberado
+function gabaritoLiberado(prova) {
+  if (!prova.modoOficial) return true;
+  if (prova.gabaritoLiberado) return true;
+  if (prova.dataLiberacaoGabarito && Date.now() >= prova.dataLiberacaoGabarito) return true;
+  return false;
+}
+
+// Liberar gabarito manualmente (admin)
+async function liberarGabaritoManual(provaId) {
+  if (!confirm('Liberar o gabarito agora para todos os alunos?')) return;
+  const { db_fire, doc, updateDoc } = window._fire;
+  await updateDoc(doc(db_fire, 'provas', provaId), { gabaritoLiberado: true });
+  const p = (db.provas||[]).find(p => p.id === provaId);
+  if (p) p.gabaritoLiberado = true;
+  toast('Gabarito liberado para todos os alunos!', 'success');
+  renderSimulados();
+}
+
+// Ranking com polling 30s
+let _rankingPollingInterval = null;
+
+async function verRankingSimuladoLive(provaId) {
+  // Limpar polling anterior
+  if (_rankingPollingInterval) { clearInterval(_rankingPollingInterval); _rankingPollingInterval = null; }
+  await verRankingSimulado(provaId);
+  // Iniciar polling 30s
+  _rankingPollingInterval = setInterval(async () => {
+    const body = document.getElementById('simulados-body');
+    if (!body || !body.innerHTML.includes('ranking-live-' + provaId)) {
+      clearInterval(_rankingPollingInterval); _rankingPollingInterval = null; return;
+    }
+    await verRankingSimulado(provaId);
+  }, 30000);
+}
+
 function abrirTransformarSimulado(provaId) {
   const preview = document.getElementById('transform-preview-' + provaId);
   if (!preview) return;
@@ -5799,6 +6005,60 @@ async function excluirProva(provaId) {
 function iniciarSimuladoTela(provaId) {
   const prova = (db.provas||[]).find(p => p.id === provaId);
   if (!prova) return;
+  const body = document.getElementById('simulados-body');
+
+  // Verificar janela do Modo Oficial
+  const janela = verificarJanelaOficial(prova);
+  if (!janela.pode) {
+    if (janela.status === 'aguardando') {
+      const d = new Date(janela.inicio);
+      const diff = janela.inicio - Date.now();
+      const hR = Math.floor(diff/3600000);
+      const mR = Math.floor((diff%3600000)/60000);
+      const sR = Math.floor((diff%60000)/1000);
+      body.innerHTML = `
+        <div style="max-width:500px;margin:0 auto;text-align:center;padding:40px 20px">
+          <div style="font-size:56px;margin-bottom:16px">⏰</div>
+          <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">${prova.nome}</h2>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px">Este simulado ainda não está disponível.</p>
+          <div style="background:var(--blue-light);border-radius:12px;padding:20px;margin-bottom:20px">
+            <div style="font-size:13px;color:var(--blue);margin-bottom:8px">Início em:</div>
+            <div style="font-size:28px;font-weight:900;color:var(--blue);font-family:'Sora',sans-serif" id="countdown-${provaId}">${hR}h ${mR}m ${sR}s</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:6px">${d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button>
+        </div>`;
+      // Countdown
+      const iv = setInterval(() => {
+        const remaining = janela.inicio - Date.now();
+        if (remaining <= 0) { clearInterval(iv); iniciarSimuladoTela(provaId); return; }
+        const el = document.getElementById('countdown-'+provaId);
+        if (!el) { clearInterval(iv); return; }
+        const h2=Math.floor(remaining/3600000), m2=Math.floor((remaining%3600000)/60000), s2=Math.floor((remaining%60000)/1000);
+        el.textContent = `${h2}h ${m2}m ${s2}s`;
+      }, 1000);
+      return;
+    }
+    if (janela.status === 'encerrado') {
+      const liberado = gabaritoLiberado(prova);
+      body.innerHTML = `
+        <div style="max-width:500px;margin:0 auto;text-align:center;padding:40px 20px">
+          <div style="font-size:56px;margin-bottom:16px">${liberado?'📊':'🔒'}</div>
+          <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">${prova.nome}</h2>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px">O período de realização encerrou.</p>
+          ${liberado
+            ? `<button class="btn btn-primary" onclick="verRankingSimuladoLive('${provaId}')">🏆 Ver Ranking e Resultado</button>`
+            : `<div style="background:#fef3c7;border-radius:10px;padding:16px;font-size:13px;color:#92400e">
+                ⏳ Aguardando liberação do gabarito pelo professor...
+                ${prova.dataLiberacaoGabarito ? '<br><span style="font-size:12px;margin-top:4px;display:block">Previsão: '+new Date(prova.dataLiberacaoGabarito).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span>' : ''}
+               </div>`
+          }
+          <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button></div>
+        </div>`;
+      return;
+    }
+  }
+
   // Monta pool de questões
   let questoes = [];
   if (prova.questoesIds && prova.questoesIds.length) {
@@ -5812,17 +6072,20 @@ function iniciarSimuladoTela(provaId) {
   if (!questoes.length) { toast('Nenhuma questão encontrada!', 'error'); return; }
   const horas = Math.floor((prova.tempo||180)/60);
   const mins = (prova.tempo||180)%60;
-  const body = document.getElementById('simulados-body');
+  const modoOficialBadge = prova.modoOficial ? '<div style="display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;margin-bottom:12px">🏆 Simulado Oficial</div>' : '';
   body.innerHTML = `
     <div style="max-width:680px;margin:0 auto">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;text-align:center">
         <div style="font-size:44px;margin-bottom:12px">🎯</div>
+        ${modoOficialBadge}
         <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">${prova.nome}</h2>
         <div style="display:flex;justify-content:center;gap:24px;margin:16px 0;flex-wrap:wrap">
           <div><div style="font-size:24px;font-weight:800;color:var(--blue)">${questoes.length}</div><div style="font-size:12px;color:var(--text-muted)">Questões</div></div>
           <div><div style="font-size:24px;font-weight:800;color:var(--blue)">${horas>0?horas+'h':''}${mins>0?mins+'min':horas===0?'—':''}</div><div style="font-size:12px;color:var(--text-muted)">Tempo</div></div>
+          ${prova.modoOficial && prova.dataFim ? `<div><div style="font-size:14px;font-weight:700;color:#d97706">${new Date(prova.dataFim).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div><div style="font-size:12px;color:var(--text-muted)">Encerra às</div></div>` : ''}
         </div>
-        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;line-height:1.6">O cronômetro só inicia quando você clicar em <strong>Iniciar</strong>. Você pode pausar a qualquer momento.</p>
+        ${prova.modoOficial ? '<p style="font-size:12px;color:#d97706;background:#fffbeb;border-radius:8px;padding:10px;margin-bottom:16px">⚠️ Modo Oficial — o gabarito será liberado pelo professor após o encerramento.</p>' : ''}
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px;line-height:1.6">O cronômetro só inicia quando você clicar em <strong>Iniciar</strong>.</p>
         <button class="btn btn-primary" style="padding:14px 36px;font-size:16px" onclick="comecarSimulado('${provaId}',${JSON.stringify(questoes).replace(/"/g,'&quot;')})">▶ Iniciar Simulado</button>
         <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button></div>
       </div>
@@ -6004,25 +6267,29 @@ async function entregarSimulado() {
   const dentroRank = !prova.dataLimiteRank || Date.now() <= prova.dataLimiteRank;
 
   // Salva resultado no Firestore e local
+  const apelido = db.user?.apelido || db.user?.nome?.split(' ')[0] || 'Aluno';
   const hist = {
     provaId: prova.id, nome: prova.nome,
-    nomeAluno: db.user?.nome||db.user?.email||'Aluno',
-    email: db.user?.email||'',
+    nomeAluno: db.user?.nome || db.user?.email || 'Aluno',
+    apelido,
+    email: db.user?.email || '',
+    uid: db.user?.uid || '',
     acertos, total: questoes.length, pontos, pontosTotais,
     notaPonderada: `${pontos}/${pontosTotais}`,
     tempoAtivo: _sim.tempoAtivo, totalPausas, tempoPausado,
     realizadoEm: Date.now(), detalhes, dentroRank,
+    modoOficial: prova.modoOficial || false,
   };
   if (!db.historico_simulados) db.historico_simulados = [];
   db.historico_simulados.push(hist);
   localStorage.setItem('pt_historico_sim', JSON.stringify(db.historico_simulados));
 
-  // Salva no Firestore para ranking
-  if (dentroRank && window._fire) {
+  // Sempre salva no Firestore (independente de prazo)
+  if (window._fire) {
     try {
       const { db_fire, doc, setDoc } = window._fire;
       await setDoc(doc(db_fire, 'resultados_simulados', `${prova.id}_${db.user?.uid||Date.now()}`), hist);
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error('Erro ao salvar resultado:', e); }
   }
 
   // Por matéria
@@ -6046,7 +6313,10 @@ async function entregarSimulado() {
         <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:8px 0">${prova.nome}</h2>
         <div style="font-size:48px;font-weight:900;color:${pct>=70?'var(--green)':pct>=50?'#d97706':'var(--red)'}">${pct}%</div>
         <div style="font-size:15px;color:var(--text-muted)">${acertos}/${questoes.length} acertos · Nota ponderada: ${pontos}/${pontosTotais} pts</div>
-        ${dentroRank ? '<div style="font-size:12px;color:var(--green);margin-top:4px">✅ Resultado registrado no ranking!</div>' : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">⏰ Prazo do ranking encerrado — resultado não contabilizado</div>'}
+        ${prova.modoOficial
+          ? '<div style="font-size:13px;background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:10px;margin-top:8px;color:#92400e">⏳ Resultado registrado! O gabarito será liberado pelo professor em breve.' + (prova.dataLiberacaoGabarito ? ' Previsão: '+new Date(prova.dataLiberacaoGabarito).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'.' : '') + '</div>'
+          : dentroRank ? '<div style="font-size:12px;color:var(--green);margin-top:4px">✅ Resultado registrado no ranking!</div>' : '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">✅ Resultado salvo!</div>'
+        }
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
         <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
@@ -6101,26 +6371,41 @@ async function verRankingSimulado(provaId) {
   } catch(e) { resultados = []; }
 
   const medalhas = ['🥇','🥈','🥉'];
+  const gabLiberado = gabaritoLiberado(prova);
+  const modoOf = prova.modoOficial;
   body.innerHTML = `
-    <div style="max-width:600px;margin:0 auto;padding:20px 16px">
+    <div id="ranking-live-${provaId}" style="max-width:600px;margin:0 auto;padding:20px 16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <div style="display:flex;align-items:center;gap:10px">
           <button class="btn btn-ghost btn-sm" onclick="renderSimulados()">← Voltar</button>
           <h2 style="font-size:16px;font-weight:700">🏆 ${prova.nome}</h2>
+          ${modoOf ? '<span style="font-size:11px;background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-weight:600">Modo Oficial</span>' : ''}
         </div>
-        ${isAdmin()?`<button class="btn btn-primary btn-sm" onclick="gerarCardRanking('${provaId}')">📤 Gerar Card</button>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${isAdmin() ? `
+            <span style="font-size:12px;color:var(--text-muted);align-self:center">🔄 Atualiza a cada 30s</span>
+            ${modoOf && !gabLiberado ? `<button class="btn btn-primary btn-sm" onclick="liberarGabaritoManual('${provaId}')">🔓 Liberar Gabarito</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="gerarCardRanking('${provaId}')">📤 Gerar Card</button>
+          ` : ''}
+        </div>
       </div>
-      ${resultados.length ? resultados.map((r,i)=>`
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:${i<3?'var(--card)':'var(--surface)'}">
-          <span style="font-size:22px;width:32px;text-align:center">${medalhas[i]||`${i+1}º`}</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text-muted)">👥 <strong style="color:var(--text)">${resultados.length}</strong> concluíram</div>
+        ${modoOf && !gabLiberado && !isAdmin() ? '<div style="font-size:12px;background:#fef3c7;color:#92400e;border-radius:8px;padding:6px 10px">⏳ Aguardando liberação do gabarito</div>' : ''}
+      </div>
+      ${resultados.length ? resultados.map((r,i)=>{
+        const nomeExib = isAdmin() ? `${r.apelido||r.nomeAluno} <span style="font-size:11px;color:var(--text-muted)">(${r.nomeAluno})</span>` : (r.apelido||r.nomeAluno||'Aluno');
+        const meuResult = r.email === db.user?.email;
+        return `<div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid ${meuResult?'var(--blue)':i<3?'var(--border)':'var(--border)'};border-radius:10px;margin-bottom:8px;background:${meuResult?'var(--blue-light)':i<3?'var(--card)':'var(--surface)'}">
+          <span style="font-size:22px;width:32px;text-align:center">${medalhas[i]||''+( i+1)+'º'}</span>
           <div style="flex:1">
-            <div style="font-size:14px;font-weight:600;color:var(--text)">${r.nomeAluno||'Aluno'}</div>
-            <div style="font-size:12px;color:var(--text-muted)">${r.acertos}/${r.total} acertos · ${r.notaPonderada} pts · ${Math.floor(r.tempoAtivo/60)}min</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${nomeExib}${meuResult?' <span style="font-size:11px;color:var(--blue);font-weight:700">(você)</span>':''}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${r.acertos}/${r.total} acertos · ${r.notaPonderada} pts · ${Math.floor((r.tempoAtivo||0)/60)}min</div>
           </div>
           <div style="font-size:18px;font-weight:800;color:${i===0?'#d97706':i===1?'#6b7280':i===2?'#b45309':'var(--text)'}">
             ${Math.round(r.acertos/r.total*100)}%
           </div>
-        </div>`).join('') : '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">Nenhum resultado ainda.</p>'}
+        </div>`}).join('') : '<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">Nenhum resultado ainda.</p>'}
     </div>`;
 }
 
