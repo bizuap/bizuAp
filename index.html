@@ -1641,7 +1641,21 @@ Exemplos:
         </div>
       </div>
     </div>
-    <div id="stab-content-sistema" style="display:none;flex:1;flex-direction:column;overflow-y:auto;padding:18px 20px">
+    
+    <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeSettings()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY SISTEMA -->
+<div id="overlay-sistema" style="display:none;position:fixed;inset:0;background:var(--bg,#f0f2f5);z-index:1100;overflow-y:auto;padding:0">
+  <div style="max-width:680px;margin:0 auto;padding:24px 20px 40px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:14px">
+      <h2 style="font-size:17px;font-weight:700;color:var(--text);margin:0">📖 Sistema</h2>
+      <button class="btn btn-ghost btn-sm" onclick="fecharSistema()">✕ Fechar</button>
+    </div>
+
       <!-- CHANGELOG -->
       <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1837,9 +1851,6 @@ Exemplos:
       </div>
     </div>
 
-    <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeSettings()">Fechar</button>
-    </div>
   </div>
 </div>
 
@@ -4211,13 +4222,31 @@ function openSettings() {
 }
 
 function showSettingsTab(tab) {
+  if (tab === 'sistema') {
+    document.getElementById('overlay-sistema').style.display = 'block';
+    ['materias','integracoes','dados','sistema'].forEach(t => {
+      const btn = document.getElementById('stab-' + t);
+      if (btn) btn.classList.toggle('active', t === tab);
+    });
+    return;
+  }
   ['materias','integracoes','dados','sistema'].forEach(t => {
     const btn = document.getElementById('stab-' + t);
     const el = document.getElementById('stab-content-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
-    if (el) el.style.display = t === tab ? 'flex' : 'none';
+    if (el) el.style.display = t === tab ? 'block' : 'none';
   });
   if (tab === 'materias') { updateSettingsStats(); renderMateriasList(); }
+}
+
+function fecharSistema() {
+  document.getElementById('overlay-sistema').style.display = 'none';
+  ['materias','integracoes','dados','sistema'].forEach(t => {
+    const btn = document.getElementById('stab-' + t);
+    if (btn) btn.classList.remove('active');
+  });
+  const btn = document.getElementById('stab-materias');
+  if (btn) btn.classList.add('active');
 }
 
 function updateSettingsStats() {
@@ -4391,7 +4420,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
