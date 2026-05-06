@@ -1739,6 +1739,36 @@ Exemplos:
         </div>
       </div>
 
+      <!-- ROADMAP -->
+      <div style="margin-bottom:20px">
+        <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🗺 Roadmap</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <details open style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">📲 Compartilhamento e Funil de Conversão</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>Contexto:</b> Implementar estratégia de compartilhamento de questões via Instagram com funil de conversão para assinatura.<br><br>
+              <b>Referência:</b> Modelo inspirado no QConcursos — 3 níveis de acesso: Visitante → Cadastrado gratuito → Assinante.<br><br>
+              <b>Fluxo planejado:</b><br>
+              1. Aluno compartilha card da questão no Instagram (sem gabarito — só enunciado + alternativas)<br>
+              2. Seguidor clica no link do card<br>
+              3. Cai na questão no app → tenta responder → aparece: <i>"Crie sua conta gratuita para ver o gabarito"</i><br>
+              4. Cadastra conta gratuita → resolve até <b>5 questões por dia</b><br>
+              5. Quer mais → CTA para assinar o Papiro Tático<br><br>
+              <b>O que implementar:</b><br>
+              • Card do Instagram gerado em canvas (1080×1080) — enunciado + alternativas + branding + link da questão. SEM gabarito<br>
+              • Modal de compartilhamento com 2 opções: link clicável + baixar card<br>
+              • Plano <b>gratuito</b> no sistema de códigos — sem expiração, limite de 5 questões/dia<br>
+              • Controle de limite diário por usuário (salvo no Firestore)<br>
+              • Tela de boas-vindas para quem chega pelo link do Instagram — destaca a questão específica<br>
+              • CTA pós-resposta — exibe número de questões disponíveis + botão de assinatura<br>
+              • Banco protegido — visitante sem login não acessa nenhuma questão<br><br>
+              <b>Decisões já tomadas:</b> Exigir cadastro antes de responder (não liberar sem login). Limite de 5/dia no plano gratuito cria urgência natural para assinar.<br><br>
+              <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">⏳ PENDENTE — implementar em sessão futura</span>
+            </div>
+          </details>
+        </div>
+      </div>
+
       <!-- TUTORIAIS -->
       <div style="margin-bottom:20px">
         <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">🎓 Tutoriais</p>
