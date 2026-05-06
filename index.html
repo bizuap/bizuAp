@@ -1648,6 +1648,29 @@ Exemplos:
   </div>
 </div>
 
+<!-- MODAL APAGAR PROVA -->
+<div class="modal-overlay" id="modal-apagar-prova">
+  <div class="modal" style="max-width:460px">
+    <h3>🗑 Apagar Simulado/Prova</h3>
+    <input type="hidden" id="apagar-prova-id">
+    <p id="apagar-prova-nome" style="font-size:14px;font-weight:600;color:var(--text);margin:10px 0 6px"></p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">O que deseja apagar?</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      <div style="border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;background:var(--surface)" onclick="confirmarApagarProva('simulado')">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">🗂 Apagar só o simulado</div>
+        <div style="font-size:12px;color:var(--text-muted)">As questões permanecem no Banco de Questões. Só remove o simulado da aba Simulados.</div>
+      </div>
+      <div style="border:1px solid var(--red);border-radius:10px;padding:14px;cursor:pointer;background:#fff5f5" onclick="confirmarApagarProva('tudo')">
+        <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:3px">🗑 Apagar tudo</div>
+        <div style="font-size:12px;color:var(--text-muted)">Remove o simulado E todas as questões vinculadas do banco permanentemente.</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-apagar-prova').classList.remove('show')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- OVERLAY SISTEMA -->
 <div id="overlay-sistema" style="display:none;position:fixed;inset:0;background:var(--bg,#f0f2f5);z-index:1100;overflow-y:auto;padding:0">
   <div style="max-width:680px;margin:0 auto;padding:24px 20px 40px">
@@ -1681,7 +1704,12 @@ Exemplos:
             • Duplicar questão (cria rascunho)<br>
             • Estatísticas de desempenho por questão (taxa de acerto)<br>
             • Badge contador de reportes novos no menu admin<br>
-            • Aba Sistema nas Configurações (esta tela)
+            • Aba Sistema nas Configurações (esta tela)<br>
+            • Botão 👁 Revisar Questões nos cards de simulados e provas anteriores (modo TEC filtrado)<br>
+            • Modal 🗑 Apagar com opção de apagar só o simulado ou tudo (simulado + questões)<br>
+            • 📄 PDF Prova — prova limpa com identidade visual Papiro Tático para imprimir<br>
+            • 📄 PDF Gabarito Comentado — gabarito rápido + questões com alternativa correta destacada e comentários<br>
+            • Roadmap adicionado na aba Sistema com item pendente: Compartilhamento e Funil de Conversão
           </div>
           <div style="background:var(--surface);padding:10px 14px;border-top:1px solid var(--border)">
             <div style="font-size:12px;font-weight:700;color:var(--text-muted)">v1.0 — Versão inicial</div>
@@ -1748,6 +1776,15 @@ Exemplos:
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Questões Relacionadas</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
               Campo no modal de edição — informe códigos separados por vírgula (ex: Q00001, Q00002). Quando uma questão relacionada é marcada como desatualizada, o sistema exibe um alerta sugerindo revisar as demais.
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Funcionalidades dos Simulados (Admin)</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>👁 Revisar Questões:</b> Abre o modo TEC carregando apenas as questões daquele simulado/prova. Permite revisar enunciados, status e gabarito um a um.<br>
+              <b>🗑 Apagar:</b> Modal com duas opções — apagar só o simulado (questões ficam no banco) ou apagar tudo (simulado + questões vinculadas).<br>
+              <b>📄 PDF Prova:</b> Gera prova limpa sem gabarito com identidade visual do Papiro Tático. Capa escura + questões numeradas + alternativas. Abre para impressão automaticamente.<br>
+              <b>📄 PDF Gabarito:</b> Gera gabarito comentado com capa roxa, gabarito rápido em grade, alternativa correta destacada em verde e comentário em destaque amarelo por questão.
             </div>
           </details>
         </div>
@@ -1835,6 +1872,16 @@ Exemplos:
               3. Selecione "Desatualizada" e explique o motivo<br>
               4. A questão sai do pool TEC automaticamente<br>
               5. Para adaptar/atualizar, exporte e traga para o chat com Claude
+            </div>
+          </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como gerar e distribuir o PDF de uma prova</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. Na aba <b>Simulados</b>, localize a prova ou simulado desejado<br>
+              2. Clique em <b>📄 PDF Prova</b> para gerar a versão sem gabarito — envie para o aluno imprimir e resolver<br>
+              3. Após o prazo, clique em <b>📄 PDF Gabarito</b> para gerar a versão comentada — envie para o aluno corrigir<br>
+              4. Os PDFs abrem automaticamente para impressão em nova aba<br>
+              5. Dica: questões sem comentário aparecerão com aviso no PDF do gabarito — use "Exportar Questões" → "Sem comentário" para completar antes de distribuir
             </div>
           </details>
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
@@ -4420,7 +4467,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -4483,9 +4530,19 @@ function renderSimulados() {
   function cardProva(p) {
     const hist = (db.historico_simulados || []).find(h => h.provaId === p.id);
     const dentroRank = p.dataLimiteRank && Date.now() <= p.dataLimiteRank;
-    const podeRank = !p.dataLimiteRank || dentroRank;
     const horas = Math.floor((p.tempo||180)/60);
     const mins = (p.tempo||180)%60;
+    const zonaAdm = isAdm ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;letter-spacing:.3px">🔑 Opções do administrador</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="revisarProvaNoTEC('${p.id}')">👁 Revisar Questões</button>
+          <button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>
+          <button class="btn btn-ghost btn-sm" style="color:#059669;border-color:#059669" onclick="gerarPDFProva('${p.id}')">📄 PDF Prova</button>
+          <button class="btn btn-ghost btn-sm" style="color:#7c3aed;border-color:#7c3aed" onclick="gerarPDFGabarito('${p.id}')">📄 PDF Gabarito</button>
+          <button class="btn btn-danger btn-sm" onclick="abrirModalApagarProva('${p.id}')">🗑 Apagar</button>
+        </div>
+      </div>` : '';
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:10px;background:var(--card)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div style="flex:1">
@@ -4501,10 +4558,10 @@ function renderSimulados() {
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           ${hist ? `<button class="btn btn-ghost btn-sm" onclick="verResultadoSimulado('${p.id}')">📊 Ver Resultado</button>` : ''}
           <button class="btn btn-primary btn-sm" onclick="iniciarSimuladoTela('${p.id}')">▶ ${hist?'Refazer':'Iniciar'}</button>
-          ${isAdm ? `<button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>` : `<button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>`}
-          ${isAdm ? `<button class="btn btn-danger btn-sm" onclick="excluirProva('${p.id}')">🗑</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>
         </div>
       </div>
+      ${zonaAdm}
     </div>`;
   }
 
@@ -4522,9 +4579,12 @@ function renderSimulados() {
       <div style="margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;letter-spacing:.3px">🔑 Opções do administrador</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="revisarProvaNoTEC('${p.id}')">👁 Revisar Questões</button>
           <button class="btn btn-ghost btn-sm" onclick="verRankingSimulado('${p.id}')">🏆 Ranking</button>
           <button class="btn btn-ghost btn-sm" style="background:var(--blue-light,#eff6ff);color:var(--blue);border-color:var(--blue)" onclick="abrirTransformarSimulado('${p.id}')">⚙ Transformar em Simulado</button>
-          <button class="btn btn-danger btn-sm" onclick="excluirProva('${p.id}')">🗑</button>
+          <button class="btn btn-ghost btn-sm" style="color:#059669;border-color:#059669" onclick="gerarPDFProva('${p.id}')">📄 PDF Prova</button>
+          <button class="btn btn-ghost btn-sm" style="color:#7c3aed;border-color:#7c3aed" onclick="gerarPDFGabarito('${p.id}')">📄 PDF Gabarito</button>
+          <button class="btn btn-danger btn-sm" onclick="abrirModalApagarProva('${p.id}')">🗑 Apagar</button>
         </div>
         <div id="transform-preview-${p.id}" style="display:none;margin-top:10px;background:var(--surface);border:0.5px dashed var(--border);border-radius:10px;padding:14px">
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">⚙ Configurar como Simulado</div>
@@ -5418,6 +5478,268 @@ function triagemDesatualizadas() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `candidatas_desatualizadas_${new Date().toISOString().slice(0,10)}.json`; a.click();
   toast(`${candidatas.length} candidatas exportadas para revisao!`);
+}
+
+// ============================================================
+// REVISAR PROVA NO MODO TEC
+// ============================================================
+function revisarProvaNoTEC(provaId) {
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  if (!prova) return;
+  // Obter IDs das questões da prova
+  let questoesIds = [];
+  if (prova.questoesIds && prova.questoesIds.length) {
+    questoesIds = prova.questoesIds.map(q => q.id || q);
+  } else {
+    questoesIds = db.questoes.filter(q => q.provaId === provaId).map(q => q.id);
+  }
+  if (!questoesIds.length) { toast('Nenhuma questão encontrada para esta prova!', 'info'); return; }
+  // Filtrar pool para só as questões desta prova
+  _tecPool = db.questoes.filter(q => questoesIds.includes(q.id));
+  if (!_tecPool.length) { toast('Questões não encontradas no banco!', 'info'); return; }
+  _tecIdx = 0;
+  _tecSelecionado = null;
+  _tecRespondidas = {};
+  _tecAcertos = 0;
+  _tecErros = 0;
+  _tecModo = 'revisao_prova';
+  showTab('quiz');
+  renderTecQuestao();
+  toast('Revisando: ' + prova.nome + ' (' + _tecPool.length + ' questões)', 'info');
+}
+
+// ============================================================
+// APAGAR PROVA/SIMULADO
+// ============================================================
+function abrirModalApagarProva(provaId) {
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  if (!prova) return;
+  document.getElementById('apagar-prova-id').value = provaId;
+  document.getElementById('apagar-prova-nome').textContent = prova.nome;
+  document.getElementById('modal-apagar-prova').classList.add('show');
+}
+
+async function confirmarApagarProva(opcao) {
+  const provaId = document.getElementById('apagar-prova-id').value;
+  if (!provaId) return;
+  document.getElementById('modal-apagar-prova').classList.remove('show');
+  const { db_fire, doc, deleteDoc, collection, getDocs, query, where } = window._fire;
+  if (opcao === 'tudo') {
+    // Apagar questões vinculadas
+    const questoesVinculadas = db.questoes.filter(q => q.provaId === provaId);
+    for (const q of questoesVinculadas) {
+      await deleteDoc(doc(db_fire, 'questoes', q.id));
+    }
+    db.questoes = db.questoes.filter(q => q.provaId !== provaId);
+    toast(`Simulado e ${questoesVinculadas.length} questões apagados!`, 'info');
+  } else {
+    toast('Simulado apagado! Questões mantidas no banco.', 'info');
+  }
+  // Apagar o simulado
+  await deleteDoc(doc(db_fire, 'provas', provaId));
+  db.provas = (db.provas||[]).filter(p => p.id !== provaId);
+  renderSimulados();
+}
+
+// ============================================================
+// GERAR PDF PROVA (sem gabarito)
+// ============================================================
+function gerarPDFProva(provaId) {
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  if (!prova) return;
+  let questoesIds = [];
+  if (prova.questoesIds?.length) questoesIds = prova.questoesIds.map(q => q.id || q);
+  else questoesIds = db.questoes.filter(q => q.provaId === provaId).map(q => q.id);
+  const questoes = questoesIds.map(id => db.questoes.find(q => q.id === id)).filter(Boolean);
+  if (!questoes.length) { toast('Nenhuma questão encontrada!', 'info'); return; }
+  const letras = ['A','B','C','D','E'];
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>${prova.nome}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Arial', sans-serif; color: #1a1a2e; background: #fff; }
+  .capa { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%); color:#fff; text-align:center; padding:40px; page-break-after:always; }
+  .capa-logo { font-size:48px; margin-bottom:16px; }
+  .capa-titulo { font-size:13px; letter-spacing:3px; text-transform:uppercase; color:#e94560; margin-bottom:8px; }
+  .capa-nome { font-size:32px; font-weight:900; margin-bottom:16px; line-height:1.2; }
+  .capa-meta { font-size:14px; color:#a0aec0; }
+  .capa-meta span { color:#fff; font-weight:600; }
+  .capa-instrucoes { margin-top:32px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:20px; text-align:left; max-width:500px; font-size:13px; line-height:1.8; color:#cbd5e0; }
+  .capa-instrucoes h4 { color:#e94560; font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px; }
+  .gabarito-row { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+  .gabarito-opt { width:28px; height:28px; border:2px solid rgba(255,255,255,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; }
+  .questao-page { padding:32px 40px; }
+  .questao-bloco { margin-bottom:28px; page-break-inside:avoid; }
+  .questao-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .questao-num { background:#e94560; color:#fff; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px; min-width:44px; text-align:center; }
+  .questao-meta { font-size:11px; color:#718096; }
+  .texto-base { background:#f7f8fc; border-left:3px solid #e94560; padding:10px 14px; margin-bottom:10px; font-size:13px; color:#4a5568; line-height:1.7; border-radius:0 6px 6px 0; }
+  .enunciado { font-size:14px; line-height:1.7; color:#2d3748; margin-bottom:12px; }
+  .opcoes { display:flex; flex-direction:column; gap:6px; }
+  .opcao { display:flex; align-items:flex-start; gap:10px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#4a5568; }
+  .opcao-letra { background:#f7f8fc; border:1px solid #e2e8f0; border-radius:50%; width:24px; height:24px; min-width:24px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; color:#2d3748; }
+  .pagina-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 12px 0; border-bottom:2px solid #e94560; margin-bottom:24px; }
+  .pagina-header-nome { font-size:13px; font-weight:700; color:#1a1a2e; }
+  .pagina-header-logo { font-size:11px; color:#e94560; font-weight:800; letter-spacing:1px; }
+  .rodape { margin-top:20px; padding-top:12px; border-top:1px solid #e2e8f0; text-align:center; font-size:11px; color:#a0aec0; }
+  @media print {
+    .questao-bloco { page-break-inside:avoid; }
+  }
+</style>
+</head><body>
+<div class="capa">
+  <div class="capa-logo">📋</div>
+  <div class="capa-titulo">Papiro Tático</div>
+  <div class="capa-nome">${prova.nome}</div>
+  <div class="capa-meta">
+    <span>${questoes.length} questões</span>
+    ${prova.ano ? ' · <span>' + prova.ano + '</span>' : ''}
+    ${prova.banca ? ' · <span>' + prova.banca + '</span>' : ''}
+    ${prova.tempo ? ' · <span>' + Math.floor(prova.tempo/60) + 'h' + (prova.tempo%60>0?prova.tempo%60+'min':'') + '</span>' : ''}
+  </div>
+  <div class="capa-instrucoes">
+    <h4>Instruções</h4>
+    • Leia atentamente cada questão antes de responder<br>
+    • Cada questão possui apenas uma alternativa correta<br>
+    • Marque sua resposta com caneta azul ou preta<br>
+    • Não é permitido o uso de materiais de consulta<br>
+    <div class="gabarito-row">${questoes.map((_,i)=>`<div class="gabarito-opt">${i+1}</div>`).join('')}</div>
+  </div>
+</div>
+<div class="questao-page">
+  <div class="pagina-header">
+    <div class="pagina-header-nome">${prova.nome}</div>
+    <div class="pagina-header-logo">PAPIRO TÁTICO</div>
+  </div>
+  ${questoes.map((q,i) => `
+    <div class="questao-bloco">
+      <div class="questao-header">
+        <span class="questao-num">Q${String(i+1).padStart(2,'0')}</span>
+        <span class="questao-meta">${q.assunto||''} ${q.topico?'· '+q.topico:''}</span>
+      </div>
+      ${q.texto_base ? '<div class="texto-base">'+q.texto_base+'</div>' : ''}
+      <div class="enunciado">${q.enunciado||''}</div>
+      <div class="opcoes">
+        ${letras.map(l => q.opcoes?.[l] ? `<div class="opcao"><span class="opcao-letra">${l}</span><span>${q.opcoes[l]}</span></div>` : '').join('')}
+      </div>
+    </div>
+  `).join('')}
+  <div class="rodape">Papiro Tático — Material exclusivo para assinantes · Proibida a reprodução não autorizada</div>
+</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+// ============================================================
+// GERAR PDF GABARITO COMENTADO
+// ============================================================
+function gerarPDFGabarito(provaId) {
+  const prova = (db.provas||[]).find(p => p.id === provaId);
+  if (!prova) return;
+  let questoesIds = [];
+  if (prova.questoesIds?.length) questoesIds = prova.questoesIds.map(q => q.id || q);
+  else questoesIds = db.questoes.filter(q => q.provaId === provaId).map(q => q.id);
+  const questoes = questoesIds.map(id => db.questoes.find(q => q.id === id)).filter(Boolean);
+  if (!questoes.length) { toast('Nenhuma questão encontrada!', 'info'); return; }
+  const letras = ['A','B','C','D','E'];
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>Gabarito — ${prova.nome}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Arial', sans-serif; color: #1a1a2e; background: #fff; }
+  .capa { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#7c3aed 100%); color:#fff; text-align:center; padding:40px; page-break-after:always; }
+  .capa-logo { font-size:48px; margin-bottom:16px; }
+  .capa-titulo { font-size:13px; letter-spacing:3px; text-transform:uppercase; color:#a78bfa; margin-bottom:8px; }
+  .capa-nome { font-size:32px; font-weight:900; margin-bottom:6px; line-height:1.2; }
+  .capa-sub { font-size:16px; color:#c4b5fd; margin-bottom:16px; }
+  .capa-meta { font-size:14px; color:#a0aec0; }
+  .capa-meta span { color:#fff; font-weight:600; }
+  .gabarito-tabela { margin-top:32px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:20px; max-width:560px; }
+  .gabarito-tabela h4 { color:#a78bfa; font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px; }
+  .gabarito-grid { display:grid; grid-template-columns:repeat(10,1fr); gap:6px; }
+  .gabarito-item { text-align:center; }
+  .gabarito-item .num { font-size:10px; color:#a0aec0; }
+  .gabarito-item .resp { font-size:13px; font-weight:800; color:#a78bfa; }
+  .questao-page { padding:32px 40px; }
+  .pagina-header { display:flex; align-items:center; justify-content:space-between; padding:0 0 12px 0; border-bottom:2px solid #7c3aed; margin-bottom:24px; }
+  .pagina-header-nome { font-size:13px; font-weight:700; color:#1a1a2e; }
+  .pagina-header-logo { font-size:11px; color:#7c3aed; font-weight:800; letter-spacing:1px; }
+  .questao-bloco { margin-bottom:28px; page-break-inside:avoid; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
+  .questao-header { display:flex; align-items:center; gap:10px; padding:10px 14px; background:#f7f8fc; border-bottom:1px solid #e2e8f0; }
+  .questao-num { background:#7c3aed; color:#fff; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px; min-width:44px; text-align:center; }
+  .questao-gab { background:#d1fae5; color:#065f46; font-size:12px; font-weight:800; padding:4px 10px; border-radius:20px; }
+  .questao-meta { font-size:11px; color:#718096; }
+  .questao-body { padding:14px; }
+  .texto-base { background:#f7f8fc; border-left:3px solid #7c3aed; padding:10px 14px; margin-bottom:10px; font-size:12px; color:#4a5568; line-height:1.7; border-radius:0 6px 6px 0; }
+  .enunciado { font-size:13px; line-height:1.7; color:#2d3748; margin-bottom:12px; }
+  .opcoes { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+  .opcao { display:flex; align-items:flex-start; gap:8px; padding:7px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; color:#4a5568; }
+  .opcao.correta { background:#d1fae5; border-color:#059669; }
+  .opcao.correta .opcao-letra { background:#059669; color:#fff; border-color:#059669; }
+  .opcao-letra { background:#f7f8fc; border:1px solid #e2e8f0; border-radius:50%; width:22px; height:22px; min-width:22px; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:11px; color:#2d3748; }
+  .comentario { background:#fffbeb; border:1px solid #fbbf24; border-radius:8px; padding:12px 14px; font-size:12px; color:#92400e; line-height:1.7; }
+  .comentario-titulo { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#f59e0b; margin-bottom:6px; }
+  .sem-comentario { font-size:12px; color:#a0aec0; font-style:italic; }
+  .rodape { margin-top:20px; padding-top:12px; border-top:1px solid #e2e8f0; text-align:center; font-size:11px; color:#a0aec0; }
+  @media print { .questao-bloco { page-break-inside:avoid; } }
+</style>
+</head><body>
+<div class="capa">
+  <div class="capa-logo">📝</div>
+  <div class="capa-titulo">Papiro Tático</div>
+  <div class="capa-nome">${prova.nome}</div>
+  <div class="capa-sub">Gabarito Comentado</div>
+  <div class="capa-meta">
+    <span>${questoes.length} questões</span>
+    ${prova.ano ? ' · <span>' + prova.ano + '</span>' : ''}
+    ${prova.banca ? ' · <span>' + prova.banca + '</span>' : ''}
+  </div>
+  <div class="gabarito-tabela">
+    <h4>Gabarito Rápido</h4>
+    <div class="gabarito-grid">
+      ${questoes.map((q,i)=>`<div class="gabarito-item"><div class="num">Q${String(i+1).padStart(2,'0')}</div><div class="resp">${q.gabarito||'—'}</div></div>`).join('')}
+    </div>
+  </div>
+</div>
+<div class="questao-page">
+  <div class="pagina-header">
+    <div class="pagina-header-nome">${prova.nome} — Gabarito Comentado</div>
+    <div class="pagina-header-logo">PAPIRO TÁTICO</div>
+  </div>
+  ${questoes.map((q,i) => `
+    <div class="questao-bloco">
+      <div class="questao-header">
+        <span class="questao-num">Q${String(i+1).padStart(2,'0')}</span>
+        <span class="questao-gab">Gabarito: ${q.gabarito||'—'}</span>
+        <span class="questao-meta">${q.assunto||''} ${q.topico?'· '+q.topico:''}</span>
+      </div>
+      <div class="questao-body">
+        ${q.texto_base ? '<div class="texto-base">'+q.texto_base+'</div>' : ''}
+        <div class="enunciado">${q.enunciado||''}</div>
+        <div class="opcoes">
+          ${letras.map(l => q.opcoes?.[l] ? `
+            <div class="opcao ${q.gabarito===l?'correta':''}">
+              <span class="opcao-letra">${l}</span>
+              <span>${q.opcoes[l]}</span>
+            </div>` : '').join('')}
+        </div>
+        ${q.comentario
+          ? `<div class="comentario"><div class="comentario-titulo">💡 Comentário</div>${q.comentario}</div>`
+          : `<div class="comentario"><div class="comentario-titulo">💡 Comentário</div><span class="sem-comentario">Comentário não disponível para esta questão.</span></div>`
+        }
+      </div>
+    </div>
+  `).join('')}
+  <div class="rodape">Papiro Tático — Gabarito Comentado · Material exclusivo para assinantes · Proibida a reprodução não autorizada</div>
+</div>
+<script>window.onload=()=>window.print();<\/script>
+</body></html>`);
+  win.document.close();
 }
 
 function abrirTransformarSimulado(provaId) {
