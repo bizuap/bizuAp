@@ -800,8 +800,11 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
         <select class="filter-select" id="filter-assunto" onchange="atualizarTopicosBanco()">
           <option value="">Todas as Matérias</option>
         </select>
-        <select class="filter-select" id="filter-topico">
+        <select class="filter-select" id="filter-topico" onchange="atualizarSubtopicosBanco()">
           <option value="">Todos os Tópicos</option>
+        </select>
+        <select class="filter-select" id="filter-subtopico">
+          <option value="">Todos os Subtópicos</option>
         </select>
         <select class="filter-select" id="filter-dificuldade">
           <option value="">Dificuldade</option>
@@ -849,8 +852,11 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
       <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz()">
         <option value="">Todas as Matérias</option>
       </select>
-      <select class="filter-select" id="quiz-filter-topico" >
+      <select class="filter-select" id="quiz-filter-topico" onchange="atualizarSubtopicosQuiz()">
         <option value="">Todos os Tópicos</option>
+      </select>
+      <select class="filter-select" id="quiz-filter-subtopico">
+        <option value="">Todos os Subtópicos</option>
       </select>
       <select class="filter-select" id="quiz-filter-banca" >
         <option value="">Banca</option>
@@ -1508,10 +1514,18 @@ Exemplos:
       </div>
       <div class="form-group">
         <label>Tópico</label>
-        <input class="form-input" id="edit-q-topico">
+        <select class="form-select" id="edit-q-topico" onchange="atualizarSubtopicosEdicao()">
+          <option value="">Selecione o tópico...</option>
+        </select>
       </div>
     </div>
     <div class="form-row" style="margin-bottom:10px">
+      <div class="form-group">
+        <label>Subtópico</label>
+        <select class="form-select" id="edit-q-subtopico">
+          <option value="">Selecione o subtópico...</option>
+        </select>
+      </div>
       <div class="form-group">
         <label>Banca</label>
         <input class="form-input" id="edit-q-banca">
@@ -1651,6 +1665,34 @@ Exemplos:
   </div>
 </div>
 
+<!-- MODAL MESCLAR MATÉRIAS -->
+<div class="modal-overlay" id="modal-mesclar-materia">
+  <div class="modal" style="max-width:500px">
+    <h3>⛓ Mesclar Matéria</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+      Todas as questões da matéria de origem serão movidas para a matéria de destino. A matéria de origem será removida.
+    </p>
+    <input type="hidden" id="mesclar-origem">
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Matéria de origem <span style="font-size:11px;color:var(--text-muted)">(será removida)</span></label>
+      <div id="mesclar-origem-label" style="font-size:14px;font-weight:600;color:var(--red);background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;margin-top:4px"></div>
+      <div id="mesclar-origem-count" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>Matéria de destino <span style="font-size:11px;color:var(--text-muted)">(todas as questões irão para cá)</span></label>
+      <select class="form-select" id="mesclar-destino" style="margin-top:4px">
+        <option value="">Selecione a matéria de destino...</option>
+      </select>
+      <div id="mesclar-destino-count" style="font-size:11px;color:var(--text-muted);margin-top:4px"></div>
+    </div>
+    <div id="mesclar-preview" style="display:none;background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--text)"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-mesclar-materia').classList.remove('show')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarMesclarMaterias()" id="btn-confirmar-mesclar">⛓ Confirmar Mesclagem</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL APAGAR PROVA -->
 <div class="modal-overlay" id="modal-apagar-prova">
   <div class="modal" style="max-width:460px">
@@ -1719,7 +1761,12 @@ Exemplos:
             • <b>Polling 30s no ranking</b> — atualização automática enquanto admin está na tela<br>
             • <b>Sempre salvar resultado no Firestore</b> — independente de prazo do rank<br>
             • <b>Botão Liberar Gabarito</b> — admin libera manualmente antes da data automática<br>
-            • <b>db.user</b> definido na init com uid, nome, apelido e dados do Firestore
+            • <b>db.user</b> definido na init com uid, nome, apelido e dados do Firestore<br>
+            • <b>Estrutura de 3 níveis</b> — Matéria → Tópico → Subtópico em todos os filtros<br>
+            • <b>17 matérias padrão</b> com 69 tópicos e 225 subtópicos baseados no TEC Concursos<br>
+            • <b>Filtros em cascata</b> no banco, modo TEC e modal de edição<br>
+            • <b>Campo subtopico</b> nas questões — opcional, questões antigas funcionam normalmente<br>
+            • <b>Função ⛓ Mesclar</b> em Configurações → Matérias & Tópicos
           </div>
           <div style="background:var(--surface);padding:10px 14px;border-top:1px solid var(--border)">
             <div style="font-size:12px;font-weight:700;color:var(--text-muted)">v1.0 — Versão inicial</div>
@@ -1737,7 +1784,7 @@ Exemplos:
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Campos de uma Questão</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
-              <code>codigo</code> (Q00001) · <code>enunciado</code> · <code>opcoes</code> {A-E} · <code>gabarito</code> · <code>assunto</code> · <code>topico</code> · <code>banca</code> · <code>ano</code> · <code>dificuldade</code> · <code>area</code> · <code>concurso</code> · <code>comentario</code> · <code>texto_base</code> · <code>status</code> (ativa/rascunho/desatualizada/anulada) · <code>motivo_status</code> · <code>historico[]</code> · <code>relacionadas[]</code> · <code>fonte</code> (manual/ia/importado) · <code>provaId</code> · <code>atualizada_em</code> · <code>atualizada_por</code> · <code>createdAt</code>
+              <code>codigo</code> (Q00001) · <code>enunciado</code> · <code>opcoes</code> {A-E} · <code>gabarito</code> · <code>assunto</code> · <code>topico</code> · <code>subtopico</code> · <code>banca</code> · <code>ano</code> · <code>dificuldade</code> · <code>area</code> · <code>concurso</code> · <code>comentario</code> · <code>texto_base</code> · <code>status</code> (ativa/rascunho/desatualizada/anulada) · <code>motivo_status</code> · <code>historico[]</code> · <code>relacionadas[]</code> · <code>fonte</code> (manual/ia/importado) · <code>provaId</code> · <code>atualizada_em</code> · <code>atualizada_por</code> · <code>createdAt</code>
             </div>
           </details>
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
@@ -1843,6 +1890,34 @@ Exemplos:
               • Versão mobile-friendly para visualizar no celular sem imprimir<br><br>
               <b>Referências:</b> Projeto Caveira (caveira.com) — simulados PDF com gabarito comentado por professores especializados em concursos policiais.<br><br>
               <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">⏳ PENDENTE — implementar em sessão futura</span>
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:#f0fdf4">📚 Estrutura de 3 Níveis — Matéria + Tópico + Subtópico <span style="font-size:11px;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;margin-left:6px;font-weight:600">✅ IMPLEMENTADO</span></summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>Contexto:</b> Expandir o sistema de classificação de questões de 2 níveis (matéria + tópico) para 3 níveis (matéria + tópico + subtópico), igual ao TEC Concursos.<br><br>
+              <b>Decisões tomadas:</b><br>
+              • 3 níveis: Matéria → Tópico → Subtópico<br>
+              • Filtros completos no banco e no modo TEC (cascata: matéria filtra tópico, tópico filtra subtópico)<br>
+              • Estrutura de nomes baseada nos prints do TEC Concursos — trazer prints antes de implementar<br><br>
+              <b>O que implementar:</b><br>
+              • Campo <code>subtopico</code> nas questões<br>
+              • Filtros cascata: matéria → tópico → subtópico no banco e modo TEC<br>
+              • Tela de Configurações com 3 níveis expansíveis<br>
+              • Função de mesclar estendida para tópicos e subtópicos<br>
+              • Import JSON com campo <code>subtopico</code> opcional<br>
+              • Tela de revisão de importação com campo subtópico editável<br><br>
+              <b>Próximo passo:</b> Trazer prints do TEC Concursos com a estrutura de matérias, tópicos e subtópicos para padronizar os nomes antes de implementar.<br><br>
+              <b>O que foi implementado:</b><br>
+              • 17 matérias padrão (11 TEC + locais do Amapá + legislação estadual)<br>
+              • 69 tópicos e 225 subtópicos baseados na estrutura do TEC<br>
+              • História e Geografia do Amapá mantidas com estrutura própria<br>
+              • Novas matérias: Legislação Penal Especial, Direito Penal e Processual Penal Militar, Contabilidade<br>
+              • Filtros em cascata: matéria → tópico → subtópico no banco, TEC e modal de edição<br>
+              • Função ⛓ Mesclar em Configurações → Matérias & Tópicos para corrigir duplicatas<br>
+              • Campo carreiras nas matérias (PC/PM) — filtro opcional para uso futuro (PF, PRF etc.)<br><br>
+              <span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">✅ IMPLEMENTADO</span>
             </div>
           </details>
 
@@ -1964,6 +2039,32 @@ Exemplos:
             </div>
           </details>
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como usar os 3 níveis de classificação</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              O sistema usa 3 níveis: <b>Matéria → Tópico → Subtópico</b><br><br>
+              <b>Ao cadastrar ou editar uma questão:</b><br>
+              1. Selecione a <b>Matéria</b> — o select de Tópico atualiza automaticamente<br>
+              2. Selecione o <b>Tópico</b> — o select de Subtópico atualiza automaticamente<br>
+              3. Selecione o <b>Subtópico</b> mais específico<br><br>
+              <b>Nos filtros do banco e modo TEC:</b><br>
+              Use os 3 selects em cascata para encontrar exatamente as questões que quer estudar.<br><br>
+              <b>Questões antigas</b> sem subtópico continuam funcionando normalmente — o campo é opcional.
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como mesclar matérias duplicadas</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. Vá em <b>Configurações → Matérias & Tópicos</b><br>
+              2. Localize a matéria que está duplicada (ex: "Lei 066/1993" com variação de nome)<br>
+              3. Clique em <b>⛓ Mesclar</b> na matéria que quer remover<br>
+              4. Selecione a matéria de destino (a que vai ficar)<br>
+              5. Confirme — todas as questões são movidas via updateDoc no Firestore<br>
+              6. A matéria de origem é removida automaticamente
+            </div>
+          </details>
+
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como usar a Triagem de Desatualizadas</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
               1. No <b>Banco de Questões</b>, clique em "Triagem Desatualizadas"<br>
@@ -1987,12 +2088,408 @@ Exemplos:
 // =============================================
 // DADOS
 // =============================================
-const MATERIAS_DEFAULT = [
-  'Lei Orgânica PC-AP (0883/2005)',
-  'Lei 066/1993 - Regime Jurídico dos Servidores Civis do AP',
-  'História do Amapá',
-  'Geografia do Amapá',
-];
+const MATERIAS_DEFAULT = ["Lei Orgânica PC-AP (0883/2005)", "Lei 066/1993 - Regime Jurídico dos Servidores Civis do AP", "História do Amapá", "Geografia do Amapá", "Língua Portuguesa", "Direito Penal", "Direito Processual Penal", "Direito Constitucional (CF/1988 e Doutrina)", "Direito Administrativo (Doutrina e Leis Federais)", "Informática", "Raciocínio Lógico e Matemática", "Legislação Penal Especial", "Lei Orgânica PC-AP (Lei nº 0883/2005)", "Regime Jurídico dos Servidores Civis do AP (Lei nº 066/1993)", "Atualidades", "Direito Penal e Processual Penal Militar", "Contabilidade"];
+
+// Estrutura de tópicos e subtópicos por matéria
+const TOPICOS_SUBTOPICOS_DEFAULT = {
+  "Lei Orgânica PC-AP (0883/2005)": {},
+  "Lei 066/1993 - Regime Jurídico dos Servidores Civis do AP": {},
+  "História do Amapá": {},
+  "Geografia do Amapá": {},
+  "Língua Portuguesa": {
+    "Compreensão e Interpretação de Texto": [
+      "Interpretação de texto",
+      "Inferências e pressupostos",
+      "Coesão e coerência textual",
+      "Tipologia e gêneros textuais"
+    ],
+    "Ortografia e Acentuação": [
+      "Ortografia oficial",
+      "Acentuação gráfica",
+      "Emprego do hífen"
+    ],
+    "Morfologia": [
+      "Classes de palavras",
+      "Flexão nominal e verbal",
+      "Formação de palavras",
+      "Pronomes e sua colocação"
+    ],
+    "Sintaxe": [
+      "Período simples e composto",
+      "Concordância nominal e verbal",
+      "Regência nominal e verbal",
+      "Crase",
+      "Pontuação"
+    ],
+    "Semântica": [
+      "Sinônimos e antônimos",
+      "Polissemia e ambiguidade",
+      "Figuras de linguagem",
+      "Denotação e conotação"
+    ],
+    "Redação Oficial": [
+      "Manual de Redação da Presidência da República",
+      "Tipos de documentos oficiais"
+    ]
+  },
+  "Direito Penal": {
+    "Princípios de Direito Penal": [
+      "Princípio da legalidade e anterioridade (art. 1º CP)",
+      "Princípios constitucionais de Direito Penal"
+    ],
+    "Aplicação da Lei Penal": [
+      "Aplicação da lei penal no tempo (arts. 1º a 4º CP)",
+      "Aplicação da lei penal no espaço (arts. 6º a 9º CP)",
+      "Lei penal excepcional, temporária e interpretativa"
+    ],
+    "Teoria do Crime": [
+      "Conceito de crime",
+      "Conduta (arts. 13, §2º e 18 a 20 CP)",
+      "Nexo de causalidade (art. 13 CP)",
+      "Tipicidade",
+      "Ilicitude e suas excludentes (arts. 23 a 25 CP)",
+      "Culpabilidade",
+      "Erro de tipo e erro de proibição",
+      "Sujeitos do crime",
+      "Concurso de pessoas (arts. 29 a 31 CP)",
+      "Punibilidade e extinção da punibilidade (arts. 107 a 120 CP)"
+    ],
+    "Das Penas": [
+      "Espécies de penas (arts. 32 a 58 CP)",
+      "Aplicação da pena",
+      "Penas restritivas de direitos",
+      "Sursis, livramento condicional e reabilitação"
+    ],
+    "Crimes contra a Pessoa": [
+      "Crimes contra a vida (arts. 121 a 128 CP)",
+      "Lesão corporal (art. 129 CP)",
+      "Crimes contra a liberdade individual (arts. 146 a 154-B CP)",
+      "Periclitação da vida e da saúde"
+    ],
+    "Crimes contra o Patrimônio": [
+      "Furto (art. 155 CP)",
+      "Roubo e extorsão (arts. 157 a 160 CP)",
+      "Estelionato (art. 171 CP)",
+      "Receptação (art. 180 CP)",
+      "Dano (art. 163 CP)"
+    ],
+    "Crimes contra a Dignidade Sexual": [
+      "Estupro (art. 213 CP)",
+      "Importunação sexual",
+      "Crimes contra vulnerável"
+    ],
+    "Crimes contra a Administração Pública": [
+      "Crimes praticados por funcionário público (arts. 312 a 327 CP)",
+      "Crimes praticados por particular (arts. 328 a 337-A CP)",
+      "Crimes contra a administração da justiça (arts. 338 a 359 CP)"
+    ]
+  },
+  "Direito Processual Penal": {
+    "Processo Penal — Sistemas e Princípios": [
+      "Sistemas processuais",
+      "Princípios do processo penal",
+      "Fontes do processo penal"
+    ],
+    "Inquérito Policial": [
+      "Conceito e natureza jurídica",
+      "Instauração e presidência",
+      "Indiciamento",
+      "Conclusão e arquivamento"
+    ],
+    "Da Ação Penal": [
+      "Ação penal pública e privada (arts. 24 a 62 CPP)",
+      "Condições da ação",
+      "Queixa-crime"
+    ],
+    "Sujeitos do Processo Penal": [
+      "Juiz, Ministério Público, acusado e defensor (arts. 251 a 281 CPP)",
+      "Assistente de acusação"
+    ],
+    "Prisão, Medidas Cautelares e Liberdade Provisória": [
+      "Prisão em flagrante",
+      "Prisão preventiva",
+      "Prisão temporária (Lei nº 7.960/1989)",
+      "Medidas cautelares diversas da prisão (arts. 282 a 350 CPP)",
+      "Liberdade provisória e fiança"
+    ],
+    "Provas": [
+      "Teoria geral das provas",
+      "Provas em espécie",
+      "Prova ilícita",
+      "Interrogatório e confissão"
+    ],
+    "Procedimentos": [
+      "Procedimento comum ordinário e sumário",
+      "Procedimento do Júri",
+      "Procedimentos especiais"
+    ],
+    "Recursos e Execução Penal": [
+      "Teoria geral dos recursos",
+      "Espécies de recursos",
+      "Execução penal — LEP (Lei nº 7.210/1984)"
+    ]
+  },
+  "Direito Constitucional (CF/1988 e Doutrina)": {
+    "Teoria do Direito Constitucional": [
+      "Conceito e classificação das constituições",
+      "Poder constituinte",
+      "Normas constitucionais e sua eficácia",
+      "Aplicação das normas constitucionais no tempo"
+    ],
+    "Dos Direitos e Garantias Fundamentais (arts. 5º a 17 CF)": [
+      "Direitos e deveres individuais e coletivos (art. 5º CF)",
+      "Remédios constitucionais",
+      "Direitos sociais (arts. 6º a 11 CF)",
+      "Nacionalidade (arts. 12 e 13 CF)",
+      "Direitos políticos (arts. 14 a 16 CF)"
+    ],
+    "Da Organização do Estado (arts. 18 a 43 CF)": [
+      "Organização político-administrativa",
+      "União, Estados, DF e Municípios",
+      "Competências exclusivas, privativas, comuns e concorrentes",
+      "Administração Pública (arts. 37 a 43 CF)",
+      "Servidores públicos (arts. 39 a 41 CF)"
+    ],
+    "Da Organização dos Poderes (arts. 44 a 135 CF)": [
+      "Poder Legislativo (arts. 44 a 75 CF)",
+      "Processo legislativo (arts. 59 a 69 CF)",
+      "Poder Executivo (arts. 76 a 91 CF)",
+      "Poder Judiciário (arts. 92 a 126 CF)",
+      "Funções essenciais à Justiça (arts. 127 a 135 CF)"
+    ],
+    "Da Defesa do Estado e das Instituições Democráticas": [
+      "Estado de defesa e estado de sítio",
+      "Forças Armadas e segurança pública (arts. 136 a 144 CF)"
+    ],
+    "Controle de Constitucionalidade": [
+      "Controle difuso e concentrado",
+      "ADI, ADC, ADPF",
+      "Efeitos das decisões"
+    ]
+  },
+  "Direito Administrativo (Doutrina e Leis Federais)": {
+    "Regime Jurídico Administrativo": [
+      "Princípios expressos e implícitos (LIMPE)",
+      "Conceito e fontes do Direito Administrativo"
+    ],
+    "Atos Administrativos": [
+      "Conceito, elementos e atributos",
+      "Classificação dos atos administrativos",
+      "Extinção, anulação e revogação"
+    ],
+    "Agentes Públicos": [
+      "Conceito e classificação",
+      "Regime jurídico estatutário",
+      "Direitos, deveres e responsabilidades"
+    ],
+    "Poderes Administrativos": [
+      "Poder vinculado e discricionário",
+      "Poder hierárquico, disciplinar e de polícia",
+      "Abuso de poder"
+    ],
+    "Licitações e Contratos Administrativos": [
+      "Lei nº 14.133/2021 — princípios e modalidades",
+      "Fases da licitação",
+      "Contratos administrativos — conceito e cláusulas exorbitantes",
+      "Dispensa e inexigibilidade"
+    ],
+    "Organização da Administração Pública": [
+      "Administração direta e indireta",
+      "Autarquias, fundações, empresas públicas e SEM",
+      "Entidades paraestatais"
+    ],
+    "Controle da Administração Pública": [
+      "Controle interno e externo",
+      "Controle judicial — mandado de segurança, ação popular",
+      "Improbidade administrativa (Lei nº 8.429/1992)"
+    ],
+    "Responsabilidade Civil do Estado": [
+      "Teoria do risco administrativo",
+      "Responsabilidade objetiva e subjetiva",
+      "Excludentes de responsabilidade"
+    ]
+  },
+  "Informática": {
+    "Hardware e Software": [
+      "Componentes do computador",
+      "Sistemas operacionais (Windows e Linux)",
+      "Conceitos básicos de software"
+    ],
+    "Pacote Office / LibreOffice": [
+      "Editor de texto (Word / Writer)",
+      "Planilha eletrônica (Excel / Calc)",
+      "Apresentação (PowerPoint / Impress)"
+    ],
+    "Internet e Segurança": [
+      "Navegadores e correio eletrônico",
+      "Redes e protocolos (TCP/IP, HTTP, HTTPS)",
+      "Segurança da informação",
+      "Vírus, malware e boas práticas"
+    ],
+    "Banco de Dados": [
+      "Conceitos básicos de banco de dados",
+      "SQL básico"
+    ]
+  },
+  "Raciocínio Lógico e Matemática": {
+    "Lógica Proposicional": [
+      "Proposições e conectivos lógicos",
+      "Tabela verdade",
+      "Equivalências e implicações lógicas",
+      "Argumentos válidos"
+    ],
+    "Raciocínio Lógico-Matemático": [
+      "Sequências numéricas e figuras",
+      "Conjuntos",
+      "Problemas de lógica"
+    ],
+    "Matemática Básica": [
+      "Aritmética e números",
+      "Porcentagem e juros",
+      "Razão e proporção",
+      "Probabilidade e estatística básica"
+    ]
+  },
+  "Legislação Penal Especial": {
+    "Lei de Drogas (Lei nº 11.343/2006)": [
+      "Crimes e penas",
+      "SISNAD",
+      "Procedimento penal"
+    ],
+    "Lei Maria da Penha (Lei nº 11.340/2006)": [
+      "Violência doméstica e familiar",
+      "Medidas protetivas",
+      "Procedimentos"
+    ],
+    "Estatuto do Desarmamento (Lei nº 10.826/2003)": [
+      "Porte e posse de arma de fogo",
+      "Crimes e penas"
+    ],
+    "Crimes de Tortura (Lei nº 9.455/1997)": [
+      "Conceito e tipos de tortura",
+      "Penas e agravantes"
+    ],
+    "Lei de Abuso de Autoridade (Lei nº 13.869/2019)": [
+      "Crimes de abuso de autoridade",
+      "Penas e procedimentos"
+    ],
+    "Crimes Hediondos (Lei nº 8.072/1990)": [
+      "Rol dos crimes hediondos",
+      "Vedações e regras especiais"
+    ],
+    "ECA — Estatuto da Criança e do Adolescente (Lei nº 8.069/1990)": [
+      "Direitos fundamentais",
+      "Ato infracional e medidas socioeducativas",
+      "Crimes em espécie"
+    ]
+  },
+  "Lei Orgânica PC-AP (Lei nº 0883/2005)": {
+    "Organização e Estrutura": [
+      "Estrutura da Polícia Civil do Amapá",
+      "Órgãos e competências",
+      "Delegacias e unidades especializadas"
+    ],
+    "Carreira e Cargos": [
+      "Cargos e atribuições",
+      "Ingresso na carreira",
+      "Progressão e promoção"
+    ],
+    "Deveres e Proibições": [
+      "Deveres do policial civil",
+      "Proibições e impedimentos",
+      "Regime disciplinar"
+    ],
+    "Direitos e Vantagens": [
+      "Direitos dos servidores",
+      "Vencimentos e gratificações",
+      "Férias e licenças"
+    ]
+  },
+  "Regime Jurídico dos Servidores Civis do AP (Lei nº 066/1993)": {
+    "Provimento e Vacância": [
+      "Formas de provimento",
+      "Vacância e exoneração",
+      "Posse e exercício"
+    ],
+    "Direitos e Vantagens": [
+      "Vencimento e remuneração",
+      "Férias",
+      "Licenças"
+    ],
+    "Deveres, Proibições e Penalidades": [
+      "Deveres do servidor",
+      "Proibições",
+      "Responsabilidades",
+      "Penalidades disciplinares"
+    ],
+    "Processo Administrativo Disciplinar": [
+      "Instauração e fases",
+      "Sindicância",
+      "PAD — procedimentos e defesa"
+    ]
+  },
+  "Atualidades": {
+    "Política Nacional e Internacional": [
+      "Fatos políticos relevantes",
+      "Relações internacionais do Brasil"
+    ],
+    "Segurança Pública": [
+      "Políticas de segurança pública",
+      "Estatísticas de criminalidade"
+    ],
+    "Economia e Sociedade": [
+      "Conjuntura econômica",
+      "Questões sociais relevantes"
+    ],
+    "Meio Ambiente": [
+      "Questões ambientais nacionais e globais"
+    ]
+  },
+  "Direito Penal e Processual Penal Militar": {
+    "Direito Penal Militar — Parte Geral": [
+      "Aplicação da lei penal militar",
+      "Crime militar — conceito e classificação",
+      "Culpabilidade e excludentes",
+      "Penas militares"
+    ],
+    "Crimes Militares em Espécie": [
+      "Crimes contra a hierarquia e disciplina",
+      "Crimes contra o serviço militar",
+      "Crimes contra a pessoa (CPM)",
+      "Crimes contra o patrimônio (CPM)"
+    ],
+    "Processo Penal Militar — Princípios e Inquérito": [
+      "Princípios do processo penal militar",
+      "Inquérito policial militar (IPM)",
+      "Competência da Justiça Militar"
+    ],
+    "Prisão e Procedimentos no CPP Militar": [
+      "Prisão em flagrante militar",
+      "Liberdade provisória no CPP Militar",
+      "Procedimentos e recursos"
+    ]
+  },
+  "Contabilidade": {
+    "Contabilidade Geral": [
+      "Conceito e objeto da contabilidade",
+      "Patrimônio — ativo, passivo e PL",
+      "Fatos contábeis e lançamentos",
+      "Balanço patrimonial e DRE"
+    ],
+    "Contabilidade Pública": [
+      "Orçamento público — LOA, LDO e PPA",
+      "Receita e despesa pública",
+      "Regime contábil público",
+      "Lei nº 4.320/1964"
+    ],
+    "Lei de Responsabilidade Fiscal (LC nº 101/2000)": [
+      "Princípios e objetivos",
+      "Receita e despesa — limites",
+      "Dívida pública e gestão fiscal",
+      "Transparência e controle"
+    ]
+  }
+};
 
 const AREAS_DEFAULT = ['Policial', 'Administrativa', 'Judiciária', 'Tributária', 'Saúde', 'Educação'];
 const CONCURSOS_DEFAULT = ['PC-AP 2025', 'PC-AP 2012'];
@@ -2184,6 +2681,7 @@ function renderMateriasList() {
       <td style="padding:12px 10px;border-bottom:0.5px solid var(--border);background:var(--surface)">
         <div class="mact" style="display:flex;align-items:center;gap:5px;justify-content:flex-end;opacity:0;transition:opacity .15s">
           <button style="${pillA}" onclick="event.stopPropagation();renomearMateria('${safe}')">✏️ Editar</button>
+          <button style="display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:999px;border:none;font-size:11px;font-weight:500;cursor:pointer;background:#EEF2FF;color:#3730A3" onclick="event.stopPropagation();abrirMesclarMateria('${safe}')">⛓ Mesclar</button>
           <button style="${pillR}" onclick="event.stopPropagation();removerMateria('${safe}')">🗑 Excluir</button>
         </div>
       </td>
@@ -2493,6 +2991,7 @@ function limparFiltrosQuiz() {
   document.getElementById('quiz-search').value = '';
   document.getElementById('quiz-filter-assunto').value = '';
   document.getElementById('quiz-filter-topico').value = '';
+  const qSub = document.getElementById('quiz-filter-subtopico'); if (qSub) qSub.value = '';
   document.getElementById('quiz-filter-banca').value = '';
   document.getElementById('quiz-filter-ano').value = '';
   document.getElementById('quiz-filter-area').value = '';
@@ -2506,26 +3005,82 @@ function limparFiltrosBanco() {
   document.getElementById('search-banco').value = '';
   document.getElementById('filter-assunto').value = '';
   document.getElementById('filter-topico').value = '';
+  const fSub = document.getElementById('filter-subtopico'); if (fSub) fSub.value = '';
   document.getElementById('filter-dificuldade').value = '';
   document.getElementById('filter-status').value = '';
   atualizarTopicosBanco();
   renderBanco();
 }
 
+function getSubtopicos(assunto, topico) {
+  if (!assunto || !topico) return [];
+  const estrutura = TOPICOS_SUBTOPICOS_DEFAULT[assunto];
+  if (!estrutura) {
+    // Fallback: subtópicos das questões existentes
+    return [...new Set(db.questoes.filter(q => q.assunto === assunto && q.topico === topico && q.subtopico).map(q => q.subtopico))].sort();
+  }
+  return estrutura[topico] || [];
+}
+
 function atualizarTopicosBanco() {
   const assunto = document.getElementById('filter-assunto').value;
   const el = document.getElementById('filter-topico');
+  const elSub = document.getElementById('filter-subtopico');
   const topicos = getTopicos(assunto);
   el.innerHTML = '<option value="">Todos os Tópicos</option>' +
     topicos.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (elSub) elSub.innerHTML = '<option value="">Todos os Subtópicos</option>';
+}
+
+function atualizarSubtopicosBanco() {
+  const assunto = document.getElementById('filter-assunto').value;
+  const topico = document.getElementById('filter-topico').value;
+  const elSub = document.getElementById('filter-subtopico');
+  if (!elSub) return;
+  const subs = getSubtopicos(assunto, topico);
+  elSub.innerHTML = '<option value="">Todos os Subtópicos</option>' +
+    subs.map(s => `<option value="${s}">${s}</option>`).join('');
 }
 
 function atualizarTopicosQuiz() {
   const assunto = document.getElementById('quiz-filter-assunto').value;
   const el = document.getElementById('quiz-filter-topico');
+  const elSub = document.getElementById('quiz-filter-subtopico');
   const topicos = getTopicos(assunto);
   el.innerHTML = '<option value="">Todos os Tópicos</option>' +
     topicos.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (elSub) elSub.innerHTML = '<option value="">Todos os Subtópicos</option>';
+}
+
+function atualizarSubtopicosQuiz() {
+  const assunto = document.getElementById('quiz-filter-assunto').value;
+  const topico = document.getElementById('quiz-filter-topico').value;
+  const elSub = document.getElementById('quiz-filter-subtopico');
+  if (!elSub) return;
+  const subs = getSubtopicos(assunto, topico);
+  elSub.innerHTML = '<option value="">Todos os Subtópicos</option>' +
+    subs.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function atualizarTopicosEdicao() {
+  const assunto = document.getElementById('edit-q-assunto')?.value;
+  const elT = document.getElementById('edit-q-topico');
+  const elS = document.getElementById('edit-q-subtopico');
+  if (!elT) return;
+  const topicos = getTopicos(assunto);
+  elT.innerHTML = '<option value="">Selecione o tópico...</option>' +
+    topicos.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (elS) elS.innerHTML = '<option value="">Selecione o subtópico...</option>';
+}
+
+function atualizarSubtopicosEdicao() {
+  const assunto = document.getElementById('edit-q-assunto')?.value;
+  const topico = document.getElementById('edit-q-topico')?.value;
+  const elS = document.getElementById('edit-q-subtopico');
+  if (!elS) return;
+  const subs = getSubtopicos(assunto, topico);
+  elS.innerHTML = '<option value="">Selecione o subtópico...</option>' +
+    subs.map(s => `<option value="${s}">${s}</option>`).join('');
 }
 
 
@@ -2625,6 +3180,12 @@ function populateSelects() {
     cadAssunto.addEventListener('change', () => populateTopicosSelect(cadAssunto.value));
   }
   if (cadAssunto) populateTopicosSelect(cadAssunto.value);
+  // Bind edit-q-assunto para cascata de tópicos/subtópicos
+  const editAssunto = document.getElementById('edit-q-assunto');
+  if (editAssunto && !editAssunto._cascadeBound) {
+    editAssunto._cascadeBound = true;
+    editAssunto.addEventListener('change', atualizarTopicosEdicao);
+  }
   // Popula Área e Concurso em todos os selects
   ['cad-area','edit-q-area','quiz-filter-area'].forEach(id => {
     const el = document.getElementById(id);
@@ -2788,6 +3349,7 @@ function renderBanco() {
   const search = document.getElementById('search-banco').value.toLowerCase();
   const assunto = document.getElementById('filter-assunto').value;
   const topico = document.getElementById('filter-topico').value;
+  const subtopico = document.getElementById('filter-subtopico')?.value || '';
   const dif = document.getElementById('filter-dificuldade').value;
   const status = document.getElementById('filter-status').value;
 
@@ -2796,6 +3358,7 @@ function renderBanco() {
     if (q.status === 'rascunho' && !isAdmin()) return false;
     if (assunto && q.assunto !== assunto) return false;
     if (topico && q.topico !== topico) return false;
+    if (subtopico && q.subtopico !== subtopico) return false;
     if (dif && q.dificuldade !== dif) return false;
     if (search && !q.enunciado.toLowerCase().includes(search) && !(q.codigo||"").toLowerCase().includes(search)) return false;
     if (status) {
@@ -2932,6 +3495,7 @@ function getPoolFiltrado() {
   const search = (document.getElementById('quiz-search')?.value||'').toLowerCase();
   const assunto = document.getElementById('quiz-filter-assunto')?.value || '';
   const topico = document.getElementById('quiz-filter-topico')?.value || '';
+  const subtopico = document.getElementById('quiz-filter-subtopico')?.value || '';
   const banca = document.getElementById('quiz-filter-banca')?.value || '';
   const ano = document.getElementById('quiz-filter-ano')?.value || '';
   const area = document.getElementById('quiz-filter-area')?.value || '';
@@ -2945,6 +3509,7 @@ function getPoolFiltrado() {
   if (search) pool = pool.filter(q => q.enunciado.toLowerCase().includes(search) || (q.codigo||"").toLowerCase().includes(search));
   if (assunto) pool = pool.filter(q => q.assunto === assunto);
   if (topico) pool = pool.filter(q => q.topico === topico);
+  if (subtopico) pool = pool.filter(q => q.subtopico === subtopico);
   if (banca) pool = pool.filter(q => q.banca === banca);
   if (ano) pool = pool.filter(q => String(q.ano) === String(ano));
   if (area) pool = pool.filter(q => q.area === area);
@@ -4227,7 +4792,27 @@ function abrirEditarQuestao(id) {
   if (!q) return;
   document.getElementById('edit-q-id').value = q.id;
   document.getElementById('edit-q-enunciado').value = q.enunciado;
-  document.getElementById('edit-q-topico').value = q.topico || '';
+  // Popula tópicos como select cascata
+  atualizarTopicosEdicao();
+  const elT = document.getElementById('edit-q-topico');
+  if (elT) {
+    // Tenta selecionar o valor existente, ou adiciona como opção customizada
+    const opts = Array.from(elT.options).map(o => o.value);
+    if (q.topico && !opts.includes(q.topico)) {
+      elT.add(new Option(q.topico, q.topico));
+    }
+    elT.value = q.topico || '';
+  }
+  // Popula subtópicos
+  atualizarSubtopicosEdicao();
+  const elS = document.getElementById('edit-q-subtopico');
+  if (elS) {
+    const optsS = Array.from(elS.options).map(o => o.value);
+    if (q.subtopico && !optsS.includes(q.subtopico)) {
+      elS.add(new Option(q.subtopico, q.subtopico));
+    }
+    elS.value = q.subtopico || '';
+  }
   document.getElementById('edit-q-banca').value = q.banca || '';
   document.getElementById('edit-q-ano').value = q.ano || '';
   document.getElementById('edit-q-comentario').value = q.comentario || '';
@@ -4289,6 +4874,7 @@ async function salvarEdicaoQuestao() {
     enunciado, opcoes, gabarito: editGabaritoAtual,
     assunto: document.getElementById('edit-q-assunto').value,
     topico: document.getElementById('edit-q-topico').value.trim(),
+    subtopico: document.getElementById('edit-q-subtopico')?.value || '',
     banca: document.getElementById('edit-q-banca').value.trim(),
     ano: document.getElementById('edit-q-ano').value ? parseInt(document.getElementById('edit-q-ano').value) : null,
     dificuldade: document.getElementById('edit-q-dificuldade').value,
@@ -4560,7 +5146,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito, toggleModoOficial, liberarGabaritoManual, verRankingSimuladoLive, verificarJanelaOficial, gabaritoLiberado,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito, toggleModoOficial, liberarGabaritoManual, verRankingSimuladoLive, verificarJanelaOficial, gabaritoLiberado, abrirMesclarMateria, confirmarMesclarMaterias, getSubtopicos, atualizarSubtopicosBanco, atualizarSubtopicosQuiz, atualizarTopicosEdicao, atualizarSubtopicosEdicao,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -5946,6 +6532,98 @@ async function verRankingSimuladoLive(provaId) {
     }
     await verRankingSimulado(provaId);
   }, 30000);
+}
+
+// ============================================================
+// MESCLAR MATÉRIAS
+// ============================================================
+function abrirMesclarMateria(nomeOrigem) {
+  const sel = document.getElementById('mesclar-destino');
+  const label = document.getElementById('mesclar-origem-label');
+  const count = document.getElementById('mesclar-origem-count');
+  const preview = document.getElementById('mesclar-preview');
+  const btn = document.getElementById('btn-confirmar-mesclar');
+
+  // Preencher origem
+  document.getElementById('mesclar-origem').value = nomeOrigem;
+  if (label) label.textContent = nomeOrigem;
+  const qtdOrigem = db.questoes.filter(q => q.assunto === nomeOrigem).length;
+  if (count) count.textContent = `${qtdOrigem} questão(ões) serão movidas`;
+
+  // Preencher select de destino (todas exceto a origem)
+  if (sel) {
+    sel.innerHTML = '<option value="">Selecione a matéria de destino...</option>' +
+      ASSUNTOS.filter(a => a !== nomeOrigem)
+        .map(a => {
+          const n = db.questoes.filter(q => q.assunto === a).length;
+          return `<option value="${a.replace(/"/g,'&quot;')}">${a} (${n} questões)</option>`;
+        }).join('');
+    sel.onchange = () => {
+      const dest = sel.value;
+      const destCount = document.getElementById('mesclar-destino-count');
+      if (!dest) { if (destCount) destCount.textContent = ''; preview.style.display = 'none'; return; }
+      const qtdDest = db.questoes.filter(q => q.assunto === dest).length;
+      if (destCount) destCount.textContent = `Atualmente tem ${qtdDest} questão(ões)`;
+      preview.style.display = 'block';
+      preview.innerHTML = `✅ Após a mesclagem, <b>${dest}</b> terá <b>${qtdOrigem + qtdDest}</b> questão(ões) e <b>${nomeOrigem}</b> será removida.`;
+    };
+  }
+
+  if (preview) preview.style.display = 'none';
+  document.getElementById('modal-mesclar-materia').classList.add('show');
+}
+
+async function confirmarMesclarMaterias() {
+  const origem = document.getElementById('mesclar-origem').value;
+  const destino = document.getElementById('mesclar-destino').value;
+  if (!origem || !destino) { toast('Selecione a matéria de destino!', 'error'); return; }
+  if (origem === destino) { toast('Origem e destino não podem ser iguais!', 'error'); return; }
+
+  const questoesAfetadas = db.questoes.filter(q => q.assunto === origem);
+  if (!questoesAfetadas.length) {
+    // Só remove a matéria da lista
+    ASSUNTOS = ASSUNTOS.filter(a => a !== origem);
+    localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
+    document.getElementById('modal-mesclar-materia').classList.remove('show');
+    renderMateriasList(); populateSelects();
+    toast(`Matéria "${origem}" removida (sem questões vinculadas)!`);
+    return;
+  }
+
+  const btn = document.getElementById('btn-confirmar-mesclar');
+  if (btn) { btn.disabled = true; btn.textContent = `Mesclando ${questoesAfetadas.length} questões...`; }
+
+  const { db_fire, doc, updateDoc } = window._fire;
+  let ok = 0;
+  for (const q of questoesAfetadas) {
+    try {
+      await updateDoc(doc(db_fire, 'questoes', q.id), { assunto: destino });
+      q.assunto = destino;
+      ok++;
+    } catch(e) { console.error('Erro ao mesclar questão:', q.id, e); }
+  }
+
+  // Remove a matéria de origem da lista
+  ASSUNTOS = ASSUNTOS.filter(a => a !== origem);
+  localStorage.setItem('pt_materias', JSON.stringify(ASSUNTOS));
+
+  // Atualizar tópicos — mover tópicos da origem para o destino
+  if (db.topicos) {
+    const topicosOrigem = db.topicos[origem] || [];
+    const topicosDestino = db.topicos[destino] || [];
+    const merged = [...new Set([...topicosDestino, ...topicosOrigem])];
+    db.topicos[destino] = merged;
+    delete db.topicos[origem];
+    localStorage.setItem('pt_topicos', JSON.stringify(db.topicos));
+  }
+
+  document.getElementById('modal-mesclar-materia').classList.remove('show');
+  if (btn) { btn.disabled = false; btn.textContent = '⛓ Confirmar Mesclagem'; }
+
+  populateSelects();
+  renderMateriasList();
+  renderBanco();
+  toast(`✅ ${ok} questões movidas de "${origem}" para "${destino}"!`);
 }
 
 function abrirTransformarSimulado(provaId) {
