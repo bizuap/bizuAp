@@ -3890,15 +3890,20 @@ function renderTecQuestao() {
 
   document.getElementById('quiz-questions-list').innerHTML = html;
   // Inserir imagem separadamente (evita problema com base64 grande em template literal)
-  if (q.imagem) {
+  const qImagem = q.imagem || '';
+  if (qImagem) {
     const imgContainer = document.getElementById('tec-q-imagem-container');
     if (imgContainer) {
       const img = document.createElement('img');
-      img.src = q.imagem;
+      img.src = qImagem;
       img.alt = 'Imagem da questão';
       img.style.cssText = 'max-width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:0 auto 14px';
+      img.onerror = () => { imgContainer.innerHTML = '<p style="color:var(--red);font-size:12px">❌ Erro ao carregar imagem</p>'; };
       imgContainer.appendChild(img);
     }
+    console.log('Imagem encontrada na questão:', q.codigo, '— tamanho:', Math.round(qImagem.length/1024) + 'KB');
+  } else {
+    console.log('Sem imagem na questão:', q.codigo);
   }
 }
 
@@ -5157,7 +5162,19 @@ async function salvarEdicaoQuestao() {
     texto_base: document.getElementById('edit-q-texto-base').value.trim(),
     relacionadas: (document.getElementById('edit-q-relacionadas')?.value||'').split(',').map(s=>s.trim()).filter(Boolean),
   };
-  await updateDoc(doc(db_fire, 'questoes', id), updates);
+  // Verificar tamanho da imagem antes de salvar
+  const imagemVal = updates.imagem || '';
+  if (imagemVal && imagemVal.length > 800000) {
+    toast('Imagem muito grande para salvar! Tente uma imagem menor.', 'error');
+    return;
+  }
+  try {
+    await updateDoc(doc(db_fire, 'questoes', id), updates);
+  } catch(e) {
+    console.error('Erro ao salvar:', e);
+    toast('Erro ao salvar: ' + e.message, 'error');
+    return;
+  }
   const idx = db.questoes.findIndex(q => q.id === id);
   if (idx !== -1) db.questoes[idx] = { ...db.questoes[idx], ...updates };
   fecharEditarQuestao();
@@ -5169,7 +5186,8 @@ async function salvarEdicaoQuestao() {
   }
   // Atualiza TEC se estiver na aba quiz
   if (document.getElementById('tab-quiz').classList.contains('active')) renderTecQuestao();
-  toast('Questão atualizada!');
+  const msg = imagemVal ? 'Questão atualizada com imagem (' + Math.round(imagemVal.length*0.75/1024) + 'KB)!' : 'Questão atualizada!';
+  toast(msg);
 }
 
 async function apagarPorFonte() {
@@ -7260,7 +7278,7 @@ async function uploadImagemQuestao(input) {
     });
 
     // Comprimir se necessário usando canvas
-    const compressed = await comprimirImagem(base64, 800);
+    const compressed = await comprimirImagem(base64, 600);
 
     // Salvar base64
     document.getElementById('edit-q-imagem-url').value = compressed;
@@ -7287,7 +7305,7 @@ function comprimirImagem(base64, maxWidth) {
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      resolve(canvas.toDataURL('image/jpeg', 0.75));
     };
     img.src = base64;
   });
