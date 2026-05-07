@@ -3868,7 +3868,7 @@ function renderTecQuestao() {
             </button>
             <div id="tec-texto-base-content" style="display:none;background:var(--surface);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:12px 14px;font-size:13px;color:var(--text-mid);line-height:1.75">${q.texto_base}</div>
           </div>` : ''}
-        ${q.imagem ? `<div style="margin-bottom:14px;text-align:center"><img src="${q.imagem}" alt="Imagem da questão" style="max-width:100%;border-radius:8px;border:1px solid var(--border)"></div>` : ''}
+        <div id="tec-q-imagem-container"></div>
         <div class="tec-q-enunciado" style="white-space:pre-wrap">${q.enunciado||''}</div>
         <div id="tec-opcoes">${opcoesHTML}</div>
         ${!jaRespondida ? `<div class="tec-actions">
@@ -3889,6 +3889,17 @@ function renderTecQuestao() {
     </div>`;
 
   document.getElementById('quiz-questions-list').innerHTML = html;
+  // Inserir imagem separadamente (evita problema com base64 grande em template literal)
+  if (q.imagem) {
+    const imgContainer = document.getElementById('tec-q-imagem-container');
+    if (imgContainer) {
+      const img = document.createElement('img');
+      img.src = q.imagem;
+      img.alt = 'Imagem da questão';
+      img.style.cssText = 'max-width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:0 auto 14px';
+      imgContainer.appendChild(img);
+    }
+  }
 }
 
 function tecClicarOpcao(letra) {
@@ -5151,6 +5162,11 @@ async function salvarEdicaoQuestao() {
   if (idx !== -1) db.questoes[idx] = { ...db.questoes[idx], ...updates };
   fecharEditarQuestao();
   renderBanco();
+  // Atualiza a questão no _tecPool também
+  if (typeof _tecPool !== 'undefined') {
+    const tecIdx = _tecPool.findIndex(q => q.id === id);
+    if (tecIdx !== -1) _tecPool[tecIdx] = { ..._tecPool[tecIdx], ...updates };
+  }
   // Atualiza TEC se estiver na aba quiz
   if (document.getElementById('tab-quiz').classList.contains('active')) renderTecQuestao();
   toast('Questão atualizada!');
