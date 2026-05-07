@@ -853,41 +853,49 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
     <div class="page-header" style="flex-wrap:wrap;gap:10px">
       <div><h2>✏️ Responder Questões</h2><p id="quiz-subtitle">Use os filtros ou navegue pelas questões</p></div>
     </div>
-    <div class="filters-bar" style="border-radius:0;margin-bottom:0;border-bottom:1px solid var(--border)">
-      <input class="search-input" id="quiz-search" placeholder="🔍 Buscar questão..." onkeydown="if(event.key==='Enter')renderQuizTec()">
-      <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz()">
-        <option value="">Todas as Matérias</option>
-      </select>
-      <select class="filter-select" id="quiz-filter-topico" onchange="atualizarSubtopicosQuiz()">
-        <option value="">Todos os Tópicos</option>
-      </select>
-      <select class="filter-select" id="quiz-filter-subtopico">
-        <option value="">Todos os Subtópicos</option>
-      </select>
-      <select class="filter-select" id="quiz-filter-banca" >
-        <option value="">Banca</option>
-      </select>
-      <select class="filter-select" id="quiz-filter-ano" >
-        <option value="">Ano</option>
-      </select>
-      <select class="filter-select" id="quiz-filter-area" >
-        <option value="">Área</option>
-      </select>
-      <select class="filter-select" id="quiz-filter-concurso" >
-        <option value="">Concurso</option>
-      </select>
-      <select class="filter-select" id="quiz-filter-dif" >
-        <option value="">Dificuldade</option>
-        <option value="Fácil">Fácil</option>
-        <option value="Médio">Médio</option>
-        <option value="Difícil">Difícil</option>
-      </select>
-      <select class="filter-select" id="quiz-modo" >
-        <option value="todas">Todas</option>
-        <option value="nao_respondida">Não Respondidas</option>
-        <option value="errada">Somente Erradas</option>
-        <option value="correta">Acertadas</option>
-      </select>
+    <div class="filters-bar" style="border-radius:0;margin-bottom:0;border-bottom:1px solid var(--border);flex-direction:column;align-items:stretch;gap:8px">
+      <!-- Linha 1: busca + botões -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input class="search-input" id="quiz-search" placeholder="🔍 Buscar questão..." style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')renderQuizTec()">
+        <button class="btn btn-primary btn-sm" onclick="renderQuizTec()" style="white-space:nowrap">🔍 Filtrar</button>
+        <button class="btn btn-ghost btn-sm" onclick="limparFiltrosQuiz()" style="white-space:nowrap">✕ Limpar</button>
+      </div>
+      <!-- Linha 2: filtros cascata + outros -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="filter-select" id="quiz-filter-assunto" onchange="atualizarTopicosQuiz()" style="flex:1;min-width:130px">
+          <option value="">Todas as Matérias</option>
+        </select>
+        <select class="filter-select" id="quiz-filter-topico" onchange="atualizarSubtopicosQuiz()" style="flex:1;min-width:120px">
+          <option value="">Todos os Tópicos</option>
+        </select>
+        <select class="filter-select" id="quiz-filter-subtopico" style="flex:1;min-width:120px">
+          <option value="">Todos os Subtópicos</option>
+        </select>
+        <select class="filter-select" id="quiz-filter-banca" style="min-width:90px">
+          <option value="">Banca</option>
+        </select>
+        <select class="filter-select" id="quiz-filter-ano" style="min-width:80px">
+          <option value="">Ano</option>
+        </select>
+        <select class="filter-select" id="quiz-filter-area" style="min-width:80px">
+          <option value="">Área</option>
+        </select>
+        <select class="filter-select" id="quiz-filter-concurso" style="min-width:100px">
+          <option value="">Concurso</option>
+        </select>
+        <select class="filter-select" id="quiz-filter-dif" style="min-width:100px">
+          <option value="">Dificuldade</option>
+          <option value="Fácil">Fácil</option>
+          <option value="Médio">Médio</option>
+          <option value="Difícil">Difícil</option>
+        </select>
+        <select class="filter-select" id="quiz-modo" style="min-width:120px">
+          <option value="todas">Todas</option>
+          <option value="nao_respondida">Não Respondidas</option>
+          <option value="errada">Somente Erradas</option>
+          <option value="correta">Acertadas</option>
+        </select>
+      </div>
     </div>
     <div style="background:var(--card);border-bottom:1px solid var(--border)" id="tec-header-bar" style="display:none">
       <!-- header de navegação TEC - preenchido por JS -->
