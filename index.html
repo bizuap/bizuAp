@@ -795,40 +795,46 @@ body { font-family:'Nunito Sans',sans-serif; background:var(--bg); color:var(--t
       </div>
     </div>
     <div class="page-body">
-      <div class="filters-bar">
-        <input class="search-input" id="search-banco" placeholder="🔍 Buscar questão..." onkeydown="if(event.key==='Enter')renderBanco()">
-        <select class="filter-select" id="filter-assunto" onchange="atualizarTopicosBanco()">
-          <option value="">Todas as Matérias</option>
-        </select>
-        <select class="filter-select" id="filter-topico" onchange="atualizarSubtopicosBanco()">
-          <option value="">Todos os Tópicos</option>
-        </select>
-        <select class="filter-select" id="filter-subtopico">
-          <option value="">Todos os Subtópicos</option>
-        </select>
-        <select class="filter-select" id="filter-dificuldade">
-          <option value="">Dificuldade</option>
-          <option value="Fácil">Fácil</option>
-          <option value="Médio">Médio</option>
-          <option value="Difícil">Difícil</option>
-        </select>
-        <select class="filter-select" id="filter-status">
-          <option value="">Todos</option>
-          <option value="nao_respondida">Não Respondidas</option>
-          <option value="correta">Acertadas</option>
-          <option value="errada">Erradas</option>
-          <option value="sem_comentario">Sem Comentário</option>
-          <option value="q_ativa">✅ Ativas</option>
-          <option value="q_rascunho">📝 Rascunho</option>
-          <option value="q_desatualizada">⚠️ Desatualizadas</option>
-          <option value="q_anulada">❌ Anuladas</option>
-          <option value="reportadas">🚩 Reportadas</option>
-        </select>
-        <button class="btn btn-primary btn-sm" onclick="renderBanco()" style="white-space:nowrap">🔍 Filtrar</button>
-        <button class="btn btn-ghost btn-sm" onclick="limparFiltrosBanco()" style="white-space:nowrap">✕ Limpar</button>
-        <div style="display:flex;gap:4px;margin-left:4px">
-          <button id="btn-view-lista" class="btn btn-primary btn-sm" onclick="setBancoView('lista')" style="white-space:nowrap">⊞ Lista</button>
-          <button id="btn-view-arvore" class="btn btn-ghost btn-sm" onclick="setBancoView('arvore')" style="white-space:nowrap">🌳 Árvore</button>
+      <div class="filters-bar" style="flex-direction:column;align-items:stretch;gap:8px">
+        <!-- Linha 1: busca + ações -->
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="search-input" id="search-banco" placeholder="🔍 Buscar questão..." style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')renderBanco()">
+          <button class="btn btn-primary btn-sm" onclick="renderBanco()" style="white-space:nowrap">🔍 Filtrar</button>
+          <button class="btn btn-ghost btn-sm" onclick="limparFiltrosBanco()" style="white-space:nowrap">✕ Limpar</button>
+          <div style="display:flex;gap:4px">
+            <button id="btn-view-lista" class="btn btn-primary btn-sm" onclick="setBancoView('lista')" style="white-space:nowrap">⊞ Lista</button>
+            <button id="btn-view-arvore" class="btn btn-ghost btn-sm" onclick="setBancoView('arvore')" style="white-space:nowrap">🌳 Árvore</button>
+          </div>
+        </div>
+        <!-- Linha 2: filtros cascata -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="filter-select" id="filter-assunto" onchange="atualizarTopicosBanco()" style="flex:1;min-width:140px">
+            <option value="">Todas as Matérias</option>
+          </select>
+          <select class="filter-select" id="filter-topico" onchange="atualizarSubtopicosBanco()" style="flex:1;min-width:130px">
+            <option value="">Todos os Tópicos</option>
+          </select>
+          <select class="filter-select" id="filter-subtopico" style="flex:1;min-width:130px">
+            <option value="">Todos os Subtópicos</option>
+          </select>
+          <select class="filter-select" id="filter-dificuldade" style="min-width:100px">
+            <option value="">Dificuldade</option>
+            <option value="Fácil">Fácil</option>
+            <option value="Médio">Médio</option>
+            <option value="Difícil">Difícil</option>
+          </select>
+          <select class="filter-select" id="filter-status" style="min-width:130px">
+            <option value="">Todos os Status</option>
+            <option value="nao_respondida">Não Respondidas</option>
+            <option value="correta">Acertadas</option>
+            <option value="errada">Erradas</option>
+            <option value="sem_comentario">Sem Comentário</option>
+            <option value="q_ativa">✅ Ativas</option>
+            <option value="q_rascunho">📝 Rascunho</option>
+            <option value="q_desatualizada">⚠️ Desatualizadas</option>
+            <option value="q_anulada">❌ Anuladas</option>
+            <option value="reportadas">🚩 Reportadas</option>
+          </select>
         </div>
       </div>
       <div class="questions-list" id="banco-list">
@@ -1079,101 +1085,194 @@ Exemplos:
   <!-- IMPORTAR JSON -->
   <div class="tab-content" id="tab-importar">
     <div class="page-header">
-      <div><h2>📥 Importar JSON</h2><p>Importe uma bateria de questões em formato JSON</p></div>
+      <div><h2>📥 Importar</h2><p>Importe provas, simulados ou questões avulsas para o banco</p></div>
     </div>
     <div class="page-body" style="max-width:700px">
-      <div class="form-section">
-        <h3>📋 Configurações da Prova (opcional)</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div class="form-group">
-            <label>Nome da Prova</label>
-            <input class="form-input" id="import-nome-prova" placeholder="Ex: PC-AP 2023 - Agente de Polícia" style="font-size:13px">
-          </div>
-          <div class="form-group">
-            <label>Ano</label>
-            <input class="form-input" id="import-ano-prova" placeholder="2023" type="number" style="font-size:13px">
-          </div>
-          <div class="form-group">
-            <label>Tempo (minutos)</label>
-            <input class="form-input" id="import-tempo-prova" placeholder="240" type="number" style="font-size:13px">
-          </div>
-          <div class="form-group">
-            <label>Disponibilizar como Simulado?</label>
-            <select class="form-select" id="import-simulado" style="font-size:13px">
-              <option value="nao">Não — apenas banco de questões</option>
-              <option value="sim">Sim — disponibilizar como simulado</option>
-            </select>
-          </div>
-        </div>
+      <!-- Sub-abas de importação -->
+      <div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:18px">
+        <button id="import-tab-prova" onclick="showImportTab('prova')" style="flex:1;padding:10px;font-size:12px;font-weight:600;background:var(--primary);color:#fff;border:none;cursor:pointer;border-right:1px solid var(--border)">📋 Prova Anterior</button>
+        <button id="import-tab-simulado" onclick="showImportTab('simulado')" style="flex:1;padding:10px;font-size:12px;font-weight:600;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer;border-right:1px solid var(--border)">🎯 Simulado</button>
+        <button id="import-tab-avulsas" onclick="showImportTab('avulsas')" style="flex:1;padding:10px;font-size:12px;font-weight:600;background:var(--surface);color:var(--text-muted);border:none;cursor:pointer">📚 Questões Avulsas</button>
       </div>
-      <div class="form-section">
-        <h3>🤖 Importar PDF com IA</h3>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">A IA extrai as questões do PDF automaticamente. Requer chave Gemini configurada em Configurações → Integrações.</p>
-        <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s" id="pdf-drop-area" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="font-size:28px;margin-bottom:8px">📄</div>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px" id="pdf-label">Arraste o PDF ou clique para selecionar</div>
-          <div style="font-size:12px;color:var(--text-muted)">Formato: .pdf</div>
-          <input type="file" accept=".pdf" id="import-pdf-file" style="display:none" onchange="selecionarPDF(this)">
-        </label>
-        <div id="pdf-info" style="display:none;margin-top:10px;padding:10px 14px;background:var(--surface);border-radius:8px;display:flex;align-items:center;gap:10px">
-          <span style="font-size:20px">📄</span>
-          <span id="pdf-nome" style="flex:1;font-size:13px;color:var(--text)"></span>
-          <button onclick="limparPDF()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px">✕</button>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-primary" id="btn-extrair-pdf" onclick="extrairPDFcomIA()" style="display:none">🤖 Extrair com IA</button>
-          <span id="pdf-status" style="font-size:12px;color:var(--text-muted)"></span>
-        </div>
-        <div id="pdf-preview" style="display:none;margin-top:16px">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px" id="pdf-preview-titulo"></div>
-          <div id="pdf-preview-lista" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
-          <div style="margin-top:12px;display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="usarJSONdoPDF()">✅ Usar estas questões</button>
-            <button class="btn btn-ghost" onclick="document.getElementById('pdf-preview').style.display='none'">✕ Descartar</button>
-          </div>
-        </div>
-      </div>
-      <div class="form-section">
-        <h3>Arquivo JSON</h3>
-        <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="font-size:28px;margin-bottom:8px">📂</div>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">Arraste o arquivo JSON ou clique para selecionar</div>
-          <div style="font-size:12px;color:var(--text-muted)">ou cole o JSON no campo abaixo</div>
-          <input type="file" accept=".json" id="import-file" style="display:none" onchange="lerArquivoJSON(this)">
-        </label>
-        <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-          <span style="font-size:12px;color:var(--text-muted)">ou cole o JSON</span>
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-        </div>
-        <textarea class="form-textarea" id="import-json" style="min-height:120px;font-family:monospace;font-size:12px" placeholder='[{"enunciado":"...","opcoes":{"A":"...","B":"..."},"gabarito":"A","assunto":"Lei Orgânica PC-AP"}]'></textarea>
-        <div style="display:flex;gap:10px;margin-top:12px">
-          <button class="btn btn-primary" onclick="validarImport()">🔍 Validar e Pré-visualizar</button>
-          <button class="btn btn-ghost" onclick="document.getElementById('import-json').value='';document.getElementById('import-preview').innerHTML=''">Limpar</button>
-        </div>
-      </div>
-      <div class="form-section">
-        <h3>Campos aceitos</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div style="background:var(--surface);border-radius:8px;padding:10px 12px">
-            <div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Obrigatórios</div>
-            <div style="font-size:12px;color:var(--text);line-height:1.8">
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">enunciado</code><br>
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">opcoes</code> — objeto A-E<br>
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">gabarito</code> — letra
+
+      <!-- ABA: PROVA ANTERIOR -->
+      <div id="import-content-prova">
+        <div class="form-section">
+          <h3>📋 Dados da Prova</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="form-group">
+              <label>Nome da Prova *</label>
+              <input class="form-input" id="import-nome-prova" placeholder="PC-AP 2017 — Agente de Polícia Civil">
+            </div>
+            <div class="form-group">
+              <label>Banca *</label>
+              <input class="form-input" id="import-banca-prova" placeholder="FCC, CEBRASPE, FGV...">
             </div>
           </div>
-          <div style="background:var(--surface);border-radius:8px;padding:10px 12px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Opcionais</div>
-            <div style="font-size:12px;color:var(--text);line-height:1.8">
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">assunto</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">topico</code><br>
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">dificuldade</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">banca</code><br>
-              <code style="background:var(--bg);padding:1px 5px;border-radius:4px">ano</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">comentario</code>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div class="form-group">
+              <label>Ano *</label>
+              <input class="form-input" id="import-ano-prova" placeholder="2017" type="number">
+            </div>
+            <div class="form-group">
+              <label>Cargo</label>
+              <input class="form-input" id="import-cargo-prova" placeholder="Agente de Polícia Civil">
+            </div>
+            <div class="form-group">
+              <label>Órgão</label>
+              <input class="form-input" id="import-orgao-prova" placeholder="PC-AP">
             </div>
           </div>
         </div>
+
+        <div class="form-section">
+          <h3>📂 Arquivo de Questões</h3>
+          <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('import-file-prova').click()">
+            <div style="font-size:28px;margin-bottom:6px">📂</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">Arraste o JSON ou clique para selecionar</div>
+            <div style="font-size:12px;color:var(--text-muted)">.json</div>
+            <input type="file" accept=".json" id="import-file-prova" style="display:none" onchange="lerArquivoImport(this,'prova')">
+          </label>
+          <div style="display:flex;align-items:center;gap:10px;margin:10px 0">
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+            <span style="font-size:12px;color:var(--text-muted)">ou cole o JSON</span>
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+          </div>
+          <textarea class="form-textarea" id="import-json-prova" style="min-height:100px;font-family:monospace;font-size:12px" placeholder='[{"enunciado":"...","opcoes":{"A":"..."},"gabarito":"A","assunto":"Direito Penal","topico":"..."}]'></textarea>
+          <div style="background:var(--surface);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:var(--text-muted);line-height:1.8">
+            <div style="font-weight:600;color:var(--text);margin-bottom:4px">🔍 Deduplicação automática</div>
+            <span style="color:var(--green)">●</span> Mesmo código ou enunciado idêntico → vincula à existente, não duplica<br>
+            <span style="color:#d97706">●</span> Enunciado similar → alerta para você decidir<br>
+            <span style="color:var(--blue)">●</span> Questão nova → cria no banco e vincula à prova
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-primary" onclick="iniciarImport('prova')">✓ Validar e Importar</button>
+            <button class="btn btn-ghost" onclick="limparImport('prova')">Limpar</button>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>🤖 Importar PDF com IA</h3>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">A IA extrai as questões do PDF automaticamente. Requer chave Gemini em Configurações → Integrações.</p>
+          <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer" id="pdf-drop-area" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:28px;margin-bottom:6px">📄</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px" id="pdf-label">Arraste o PDF ou clique para selecionar</div>
+            <div style="font-size:12px;color:var(--text-muted)">Formato: .pdf</div>
+            <input type="file" accept=".pdf" id="import-pdf-file" style="display:none" onchange="selecionarPDF(this)">
+          </label>
+          <div id="pdf-info" style="display:none;margin-top:10px;padding:10px 14px;background:var(--surface);border-radius:8px;align-items:center;gap:10px">
+            <span style="font-size:20px">📄</span>
+            <span id="pdf-nome" style="flex:1;font-size:13px;color:var(--text)"></span>
+            <button onclick="limparPDF()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:16px">✕</button>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button class="btn btn-primary" id="btn-extrair-pdf" onclick="extrairPDFcomIA()" style="display:none">🤖 Extrair com IA</button>
+            <span id="pdf-status" style="font-size:12px;color:var(--text-muted)"></span>
+          </div>
+          <div id="pdf-preview" style="display:none;margin-top:16px">
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px" id="pdf-preview-titulo"></div>
+            <div id="pdf-preview-lista" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-primary" onclick="usarJSONdoPDF()">✅ Usar estas questões</button>
+              <button class="btn btn-ghost" onclick="document.getElementById('pdf-preview').style.display='none'">✕ Descartar</button>
+            </div>
+          </div>
+        </div>
+        <div id="import-preview"></div>
       </div>
-      <div id="import-preview"></div>
+
+      <!-- ABA: SIMULADO -->
+      <div id="import-content-simulado" style="display:none">
+        <div class="form-section">
+          <h3>🎯 Dados do Simulado</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="form-group">
+              <label>Nome do Simulado *</label>
+              <input class="form-input" id="import-nome-simulado" placeholder="Simulado Policial — Junho 2025">
+            </div>
+            <div class="form-group">
+              <label>Origem</label>
+              <input class="form-input" id="import-origem-simulado" placeholder="Projeto Missão, próprio, etc.">
+            </div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text-muted);line-height:1.8">
+            <div style="font-weight:600;color:var(--text);margin-bottom:4px">Como funciona</div>
+            O sistema tenta vincular cada questão às já existentes no banco pelo código ou enunciado.<br>
+            Questões não encontradas são criadas automaticamente.<br>
+            Ao apagar o simulado, questões existentes <b>não são removidas</b> do banco.
+          </div>
+        </div>
+        <div class="form-section">
+          <h3>📂 Arquivo de Questões</h3>
+          <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('import-file-simulado').click()">
+            <div style="font-size:28px;margin-bottom:6px">📂</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">Arraste o JSON ou clique para selecionar</div>
+            <div style="font-size:12px;color:var(--text-muted)">.json</div>
+            <input type="file" accept=".json" id="import-file-simulado" style="display:none" onchange="lerArquivoImport(this,'simulado')">
+          </label>
+          <div style="display:flex;align-items:center;gap:10px;margin:10px 0">
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+            <span style="font-size:12px;color:var(--text-muted)">ou cole o JSON</span>
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+          </div>
+          <textarea class="form-textarea" id="import-json-simulado" style="min-height:100px;font-family:monospace;font-size:12px" placeholder='[{"codigo":"Q00001","enunciado":"..."}]'></textarea>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-primary" onclick="iniciarImport('simulado')">✓ Validar e Importar</button>
+            <button class="btn btn-ghost" onclick="limparImport('simulado')">Limpar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA: QUESTÕES AVULSAS -->
+      <div id="import-content-avulsas" style="display:none">
+        <div class="form-section">
+          <h3>📚 Questões Avulsas</h3>
+          <div style="background:var(--surface);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text-muted);line-height:1.8">
+            As questões vão direto para o banco organizadas por matéria e tópico, sem criar prova ou simulado.
+            Útil para adicionar questões de diversas fontes, questões geradas por IA, ou questões avulsas de estudo.
+          </div>
+        </div>
+        <div class="form-section">
+          <h3>📂 Arquivo de Questões</h3>
+          <label style="display:block;border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById('import-file-avulsas').click()">
+            <div style="font-size:28px;margin-bottom:6px">📂</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px">Arraste o JSON ou clique para selecionar</div>
+            <div style="font-size:12px;color:var(--text-muted)">.json</div>
+            <input type="file" accept=".json" id="import-file-avulsas" style="display:none" onchange="lerArquivoImport(this,'avulsas')">
+          </label>
+          <div style="display:flex;align-items:center;gap:10px;margin:10px 0">
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+            <span style="font-size:12px;color:var(--text-muted)">ou cole o JSON</span>
+            <div style="flex:1;height:1px;background:var(--border)"></div>
+          </div>
+          <textarea class="form-textarea" id="import-json-avulsas" style="min-height:100px;font-family:monospace;font-size:12px" placeholder='[{"enunciado":"...","opcoes":{"A":"..."},"gabarito":"A","assunto":"Direito Penal","topico":"..."}]'></textarea>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-primary" onclick="iniciarImport('avulsas')">✓ Validar e Importar</button>
+            <button class="btn btn-ghost" onclick="limparImport('avulsas')">Limpar</button>
+          </div>
+        </div>
+        <div class="form-section">
+          <h3>Campos aceitos</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="background:var(--surface);border-radius:8px;padding:10px 12px">
+              <div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Obrigatórios</div>
+              <div style="font-size:12px;color:var(--text);line-height:1.8">
+                <code style="background:var(--bg);padding:1px 5px;border-radius:4px">enunciado</code><br>
+                <code style="background:var(--bg);padding:1px 5px;border-radius:4px">opcoes</code> — objeto A-E<br>
+                <code style="background:var(--bg);padding:1px 5px;border-radius:4px">gabarito</code> — letra
+              </div>
+            </div>
+            <div style="background:var(--surface);border-radius:8px;padding:10px 12px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Opcionais</div>
+              <div style="font-size:12px;color:var(--text);line-height:1.8">
+                <code style="background:var(--bg);padding:1px 5px;border-radius:4px">assunto</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">topico</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">subtopico</code><br>
+                <code style="background:var(--bg);padding:1px 5px;border-radius:4px">dificuldade</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">banca</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">ano</code><br>
+                <code style="background:var(--bg);padding:1px 5px;border-radius:4px">comentario</code>, <code style="background:var(--bg);padding:1px 5px;border-radius:4px">texto_base</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1665,6 +1764,44 @@ Exemplos:
   </div>
 </div>
 
+<!-- MODAL PROGRESSO DE IMPORTAÇÃO -->
+<div class="modal-overlay" id="modal-import-progresso" style="z-index:1100">
+  <div class="modal" style="max-width:460px;text-align:center">
+    <div id="import-prog-icon" style="font-size:48px;margin-bottom:12px">📥</div>
+    <h3 id="import-prog-titulo" style="font-size:16px;margin-bottom:6px">Importando...</h3>
+    <p id="import-prog-subtitulo" style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Aguarde enquanto processamos as questões</p>
+    <div id="import-prog-barra-wrap" style="background:var(--surface);border-radius:99px;height:6px;margin-bottom:8px;overflow:hidden">
+      <div id="import-prog-barra" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width .3s"></div>
+    </div>
+    <p id="import-prog-detalhe" style="font-size:12px;color:var(--text-muted);margin-bottom:0">Iniciando...</p>
+
+    <!-- Etapas -->
+    <div id="import-prog-etapas" style="margin-top:16px;text-align:left;display:flex;flex-direction:column;gap:8px">
+      <div id="etapa-validar" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:var(--surface)">
+        <span id="etapa-validar-icon" style="font-size:16px">⏳</span>
+        <span style="font-size:13px;color:var(--text)">Validando estrutura do JSON</span>
+      </div>
+      <div id="etapa-dedup" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:var(--surface);opacity:.4">
+        <span id="etapa-dedup-icon" style="font-size:16px">🔍</span>
+        <span id="etapa-dedup-txt" style="font-size:13px;color:var(--text)">Verificando duplicatas</span>
+      </div>
+      <div id="etapa-salvar" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:var(--surface);opacity:.4">
+        <span id="etapa-salvar-icon" style="font-size:16px">💾</span>
+        <span id="etapa-salvar-txt" style="font-size:13px;color:var(--text)">Salvando no banco</span>
+      </div>
+    </div>
+
+    <!-- Resultado (aparece após concluir) -->
+    <div id="import-prog-resultado" style="display:none;margin-top:16px;background:var(--surface);border-radius:10px;padding:14px">
+      <div id="import-prog-resultado-body" style="font-size:13px;color:var(--text);line-height:2;text-align:left"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:center">
+        <button class="btn btn-primary" id="import-prog-btn-revisao" onclick="abrirRevisaoDuplicatas()" style="display:none">👀 Ver similares</button>
+        <button class="btn btn-ghost" onclick="fecharModalImportProgresso()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL MESCLAR MATÉRIAS -->
 <div class="modal-overlay" id="modal-mesclar-materia">
   <div class="modal" style="max-width:500px">
@@ -1766,7 +1903,12 @@ Exemplos:
             • <b>17 matérias padrão</b> com 69 tópicos e 225 subtópicos baseados no TEC Concursos<br>
             • <b>Filtros em cascata</b> no banco, modo TEC e modal de edição<br>
             • <b>Campo subtopico</b> nas questões — opcional, questões antigas funcionam normalmente<br>
-            • <b>Função ⛓ Mesclar</b> em Configurações → Matérias & Tópicos
+            • <b>Função ⛓ Mesclar</b> em Configurações → Matérias & Tópicos (agora deleta do Firestore)<br>
+            • <b>Aba Importar reorganizada</b> em 3 sub-abas: Prova Anterior · Simulado · Questões Avulsas<br>
+            • <b>Deduplicação automática</b> — verifica código, enunciado idêntico e similaridade antes de criar<br>
+            • <b>Modal de progresso</b> na importação com 3 etapas e resultado detalhado<br>
+            • <b>Campos novos na prova</b>: banca, cargo, órgão (além de nome e ano)<br>
+            • <b>Filtros do banco reorganizados</b> em 2 linhas — botão Filtrar sempre visível
           </div>
           <div style="background:var(--surface);padding:10px 14px;border-top:1px solid var(--border)">
             <div style="font-size:12px;font-weight:700;color:var(--text-muted)">v1.0 — Versão inicial</div>
@@ -1798,14 +1940,15 @@ Exemplos:
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Tipos de Prova/Simulado</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
-              <b>importado:</b> Criado via import JSON. Aparece em Provas Anteriores na aba Simulados.<br>
-              <b>personalizado:</b> Montado pelo admin ou transformado de prova. Aparece em Simulados do Papiro Tático.
+              <b>importado:</b> Criado via aba Importar → Prova Anterior. Aparece em Provas Anteriores.<br>
+              <b>personalizado:</b> Montado pelo admin ou transformado de prova. Aparece em Simulados do Papiro Tático.<br><br>
+              <b>Campos da prova importada:</b> nome · banca · ano · cargo · órgão · questoesIds[] · totalQuestoes · tipo · criadoEm
             </div>
           </details>
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Exportação de Questões</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
-              Botão "Exportar Questões" no Banco de Questões (admin). Filtros: matéria, tópico, concurso, status, ano, sem comentário, reportadas, taxa de acerto. Formatos: JSON (para reimportar) e CSV (para análise no Excel/Sheets).
+              Botão "Exportar Questões" no Banco de Questões (admin). Filtros: matéria, tópico, subtópico, concurso, status, ano, sem comentário, reportadas, taxa de acerto. Formatos: JSON (para reimportar) e CSV (para análise no Excel/Sheets).
             </div>
           </details>
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
@@ -1835,6 +1978,20 @@ Exemplos:
               Campo no modal de edição — informe códigos separados por vírgula (ex: Q00001, Q00002). Quando uma questão relacionada é marcada como desatualizada, o sistema exibe um alerta sugerindo revisar as demais.
             </div>
           </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Tipos de Importação</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              <b>📋 Prova Anterior:</b> Importa questões vinculadas a uma prova real de banca. Campos obrigatórios: nome, banca, ano. Opcionais: cargo, órgão. A prova aparece em Provas Anteriores na aba Simulados.<br><br>
+              <b>🎯 Simulado:</b> Importa um simulado montado externamente. O sistema vincula às questões já existentes no banco pelo código ou enunciado, sem duplicar. Ao apagar o simulado, as questões existentes ficam intactas no banco.<br><br>
+              <b>📚 Questões Avulsas:</b> Importa questões direto para o banco sem criar prova ou simulado. Útil para questões de diversas fontes ou geradas por IA.<br><br>
+              <b>Deduplicação automática (todos os tipos):</b><br>
+              • Mesmo código Q00001 → vincula à existente, não duplica<br>
+              • Enunciado idêntico → vincula à existente, não duplica<br>
+              • Enunciado similar (&gt;85%) → alerta para revisar<br>
+              • Questão nova → cria normalmente no banco
+            </div>
+          </details>
+
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Funcionalidades dos Simulados (Admin)</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
@@ -2038,6 +2195,20 @@ Exemplos:
               5. Dica: questões sem comentário aparecerão com aviso no PDF do gabarito — use "Exportar Questões" → "Sem comentário" para completar antes de distribuir
             </div>
           </details>
+          <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como importar uma prova anterior</summary>
+            <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
+              1. Vá para a aba <b>Importar → 📋 Prova Anterior</b><br>
+              2. Preencha nome, banca, ano e cargo da prova<br>
+              3. Cole o JSON ou selecione o arquivo<br>
+              4. Clique em <b>✓ Validar e Importar</b><br>
+              5. Acompanhe o progresso nas 3 etapas: Validar → Duplicatas → Salvar<br>
+              6. Veja o resultado: novas criadas · vinculadas · similares para revisar<br>
+              7. A prova aparece automaticamente em <b>Provas Anteriores</b> na aba Simulados<br>
+              8. Se quiser transformar em simulado com cronômetro, clique em ⚙ Transformar no card
+            </div>
+          </details>
+
           <details style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
             <summary style="padding:10px 14px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;background:var(--surface)">Como usar os 3 níveis de classificação</summary>
             <div style="padding:12px 14px;font-size:12px;color:var(--text-mid);line-height:1.8;border-top:1px solid var(--border)">
@@ -5146,7 +5317,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito, toggleModoOficial, liberarGabaritoManual, verRankingSimuladoLive, verificarJanelaOficial, gabaritoLiberado, abrirMesclarMateria, confirmarMesclarMaterias, getSubtopicos, atualizarSubtopicosBanco, atualizarSubtopicosQuiz, atualizarTopicosEdicao, atualizarSubtopicosEdicao,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito, toggleModoOficial, liberarGabaritoManual, verRankingSimuladoLive, verificarJanelaOficial, gabaritoLiberado, abrirMesclarMateria, confirmarMesclarMaterias, getSubtopicos, showImportTab, lerArquivoImport, limparImport, iniciarImport, fecharModalImportProgresso, abrirRevisaoDuplicatas, atualizarSubtopicosBanco, atualizarSubtopicosQuiz, atualizarTopicosEdicao, atualizarSubtopicosEdicao,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -6642,6 +6813,309 @@ async function confirmarMesclarMaterias() {
   renderMateriasList();
   renderBanco();
   toast(`✅ ${ok} questões movidas de "${origem}" para "${destino}"!`);
+}
+
+// ============================================================
+// IMPORTAÇÃO — SUB-ABAS
+// ============================================================
+function showImportTab(tab) {
+  ['prova','simulado','avulsas'].forEach(t => {
+    const btn = document.getElementById('import-tab-' + t);
+    const el = document.getElementById('import-content-' + t);
+    if (btn) {
+      btn.style.background = t === tab ? 'var(--primary)' : 'var(--surface)';
+      btn.style.color = t === tab ? '#fff' : 'var(--text-muted)';
+    }
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+function lerArquivoImport(input, tipo) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const el = document.getElementById('import-json-' + tipo);
+    if (el) el.value = e.target.result;
+  };
+  reader.readAsText(file);
+}
+
+function limparImport(tipo) {
+  const el = document.getElementById('import-json-' + tipo);
+  if (el) el.value = '';
+}
+
+// ============================================================
+// IMPORTAÇÃO — DEDUPLICAÇÃO
+// ============================================================
+function similaridade(a, b) {
+  if (!a || !b) return 0;
+  const la = a.toLowerCase().trim(), lb = b.toLowerCase().trim();
+  if (la === lb) return 1;
+  const len = Math.max(la.length, lb.length);
+  if (len === 0) return 1;
+  let common = 0;
+  const words_a = new Set(la.split(/\s+/));
+  const words_b = lb.split(/\s+/);
+  words_b.forEach(w => { if (words_a.has(w)) common++; });
+  return (2 * common) / (words_a.size + words_b.length);
+}
+
+function verificarDuplicata(q) {
+  // 1. Verifica por código
+  if (q.codigo) {
+    const por_codigo = db.questoes.find(x => x.codigo === q.codigo);
+    if (por_codigo) return { tipo: 'identica', questao: por_codigo, metodo: 'código' };
+  }
+  // 2. Verifica por enunciado idêntico
+  const por_enunciado = db.questoes.find(x => x.enunciado && q.enunciado && x.enunciado.trim() === q.enunciado.trim());
+  if (por_enunciado) return { tipo: 'identica', questao: por_enunciado, metodo: 'enunciado idêntico' };
+  // 3. Verifica por similaridade
+  for (const x of db.questoes) {
+    if (!x.enunciado || !q.enunciado) continue;
+    const sim = similaridade(x.enunciado, q.enunciado);
+    if (sim >= 0.85) return { tipo: 'similar', questao: x, similaridade: Math.round(sim * 100), metodo: 'enunciado similar' };
+  }
+  return null;
+}
+
+// ============================================================
+// IMPORTAÇÃO — PROGRESSO
+// ============================================================
+function atualizarProgresso(titulo, subtitulo, pct, detalhe) {
+  const el = id => document.getElementById(id);
+  if (el('import-prog-titulo')) el('import-prog-titulo').textContent = titulo;
+  if (el('import-prog-subtitulo')) el('import-prog-subtitulo').textContent = subtitulo;
+  if (el('import-prog-barra')) el('import-prog-barra').style.width = pct + '%';
+  if (el('import-prog-detalhe')) el('import-prog-detalhe').textContent = detalhe;
+}
+
+function avancarEtapa(etapa) {
+  const etapas = ['validar','dedup','salvar'];
+  etapas.forEach((e, i) => {
+    const el = document.getElementById('etapa-' + e);
+    const icon = document.getElementById('etapa-' + e + '-icon');
+    if (!el || !icon) return;
+    if (e === etapa) {
+      el.style.opacity = '1';
+      el.style.background = 'var(--blue-light)';
+      icon.textContent = '⏳';
+    } else if (etapas.indexOf(e) < etapas.indexOf(etapa)) {
+      el.style.opacity = '1';
+      el.style.background = 'var(--green-light)';
+      icon.textContent = '✅';
+    } else {
+      el.style.opacity = '0.4';
+      el.style.background = 'var(--surface)';
+    }
+  });
+}
+
+function fecharModalImportProgresso() {
+  document.getElementById('modal-import-progresso').classList.remove('show');
+  renderBanco();
+}
+
+let _importSimilares = [];
+
+function abrirRevisaoDuplicatas() {
+  document.getElementById('modal-import-progresso').classList.remove('show');
+  _revisaoData = _importSimilares.map(s => ({ ...s.questaoNova, _status: 'aprovado', _similar: s.questaoExistente?.codigo }));
+  abrirRevisaoImport();
+}
+
+// ============================================================
+// IMPORTAÇÃO — FUNÇÃO PRINCIPAL
+// ============================================================
+async function iniciarImport(tipo) {
+  const jsonEl = document.getElementById('import-json-' + tipo);
+  const jsonStr = jsonEl?.value?.trim();
+  if (!jsonStr) { toast('Cole o JSON ou selecione um arquivo!', 'error'); return; }
+
+  // Abrir modal de progresso
+  const modal = document.getElementById('modal-import-progresso');
+  modal.classList.add('show');
+  document.getElementById('import-prog-resultado').style.display = 'none';
+  document.getElementById('import-prog-btn-revisao').style.display = 'none';
+  document.getElementById('import-prog-icon').textContent = '📥';
+  ['validar','dedup','salvar'].forEach(e => {
+    const el = document.getElementById('etapa-' + e);
+    const icon = document.getElementById('etapa-' + e + '-icon');
+    if (el) { el.style.opacity = e === 'validar' ? '1' : '0.4'; el.style.background = 'var(--surface)'; }
+    if (icon) icon.textContent = e === 'validar' ? '⏳' : ['dedup','salvar'].includes(e) ? '🔍' : '💾';
+  });
+  document.getElementById('etapa-dedup-icon').textContent = '🔍';
+  document.getElementById('etapa-salvar-icon').textContent = '💾';
+
+  // ETAPA 1: Validar JSON
+  avancarEtapa('validar');
+  atualizarProgresso('Validando...', 'Verificando estrutura do JSON', 10, 'Lendo arquivo...');
+  await new Promise(r => setTimeout(r, 400));
+
+  let questoes;
+  try {
+    questoes = JSON.parse(jsonStr);
+    if (!Array.isArray(questoes)) throw new Error('O JSON deve ser um array de questões');
+    if (!questoes.length) throw new Error('Nenhuma questão encontrada no JSON');
+  } catch(e) {
+    atualizarProgresso('Erro!', 'JSON inválido', 0, e.message);
+    document.getElementById('import-prog-icon').textContent = '❌';
+    document.getElementById('etapa-validar-icon').textContent = '❌';
+    document.getElementById('import-prog-resultado').style.display = 'block';
+    document.getElementById('import-prog-resultado-body').innerHTML = '<span style="color:var(--red)">❌ ' + e.message + '</span>';
+    return;
+  }
+  atualizarProgresso('Validado!', questoes.length + ' questões encontradas', 20, 'Estrutura OK');
+
+  // ETAPA 2: Verificar duplicatas
+  avancarEtapa('dedup');
+  atualizarProgresso('Verificando duplicatas...', 'Comparando com o banco de dados', 30, 'Analisando...');
+  await new Promise(r => setTimeout(r, 300));
+
+  let identicas = 0, similares = [], novas = 0;
+  _importSimilares = [];
+
+  for (let i = 0; i < questoes.length; i++) {
+    const q = questoes[i];
+    const dup = verificarDuplicata(q);
+    if (dup) {
+      if (dup.tipo === 'identica') {
+        identicas++;
+        questoes[i]._existente = dup.questao;
+      } else {
+        similares.push({ questaoNova: q, questaoExistente: dup.questao, similaridade: dup.similaridade });
+        _importSimilares.push({ questaoNova: q, questaoExistente: dup.questao });
+        questoes[i]._similar = dup.questao;
+        novas++;
+      }
+    } else {
+      novas++;
+    }
+    if (i % 10 === 0) {
+      const pct = 30 + Math.round((i / questoes.length) * 30);
+      atualizarProgresso('Verificando duplicatas...', 'Comparando com o banco', pct, (i+1) + '/' + questoes.length + ' analisadas');
+      await new Promise(r => setTimeout(r, 10));
+    }
+  }
+  atualizarProgresso('Duplicatas verificadas!', '', 60, identicas + ' idênticas · ' + similares.length + ' similares · ' + novas + ' novas');
+
+  // ETAPA 3: Salvar
+  avancarEtapa('salvar');
+  const { db_fire, doc, setDoc, collection, addDoc, serverTimestamp } = window._fire;
+
+  // Metadados da prova/simulado
+  let provaId = null;
+  if (tipo === 'prova') {
+    const nome = document.getElementById('import-nome-prova')?.value?.trim();
+    const banca = document.getElementById('import-banca-prova')?.value?.trim();
+    const ano = parseInt(document.getElementById('import-ano-prova')?.value) || null;
+    const cargo = document.getElementById('import-cargo-prova')?.value?.trim();
+    const orgao = document.getElementById('import-orgao-prova')?.value?.trim();
+    if (!nome) { toast('Preencha o nome da prova!', 'error'); modal.classList.remove('show'); return; }
+    provaId = genId();
+    const dadosProva = {
+      id: provaId, nome, banca: banca || '', ano: ano || null,
+      cargo: cargo || '', orgao: orgao || '',
+      tipo: 'importado', totalQuestoes: questoes.filter(q => !q._existente).length + identicas,
+      criadoEm: serverTimestamp(),
+    };
+    await setDoc(doc(db_fire, 'provas', provaId), dadosProva);
+    db.provas = db.provas || [];
+    db.provas.push(dadosProva);
+    // Criar concurso se não existir
+    const concursoNome = nome;
+    if (!CONCURSOS.includes(concursoNome)) { CONCURSOS.push(concursoNome); localStorage.setItem('pt_concursos', JSON.stringify(CONCURSOS)); }
+  } else if (tipo === 'simulado') {
+    const nome = document.getElementById('import-nome-simulado')?.value?.trim();
+    if (!nome) { toast('Preencha o nome do simulado!', 'error'); modal.classList.remove('show'); return; }
+    provaId = genId();
+    const dadosProva = { id: provaId, nome, tipo: 'personalizado', totalQuestoes: questoes.length, criadoEm: serverTimestamp() };
+    await setDoc(doc(db_fire, 'provas', provaId), dadosProva);
+    db.provas = db.provas || [];
+    db.provas.push(dadosProva);
+  }
+
+  // Salvar questões
+  let salvas = 0, vinculadas = 0;
+  const questoesIds = [];
+  for (let i = 0; i < questoes.length; i++) {
+    const q = questoes[i];
+    atualizarProgresso('Salvando no banco...', '', 60 + Math.round((i/questoes.length)*38), (i+1) + '/' + questoes.length + ' questões');
+    if (i % 5 === 0) await new Promise(r => setTimeout(r, 10));
+
+    if (q._existente) {
+      // Vincula à existente
+      vinculadas++;
+      const qid = q._existente.id;
+      questoesIds.push({ id: qid, peso: 1 });
+      if (provaId && !q._existente.provaId) {
+        // Não altera provaId de questão existente, só vincula
+      }
+    } else {
+      // Cria nova
+      const novaId = genId();
+      const obj = {
+        id: novaId,
+        codigo: q.codigo || gerarCodigoBAP(),
+        enunciado: q.enunciado || '',
+        opcoes: q.opcoes || {},
+        gabarito: q.gabarito || '',
+        assunto: q.assunto || (ASSUNTOS[0] || ''),
+        topico: q.topico || '',
+        subtopico: q.subtopico || '',
+        banca: q.banca || (tipo === 'prova' ? document.getElementById('import-banca-prova')?.value?.trim() : '') || '',
+        ano: q.ano || (tipo === 'prova' ? parseInt(document.getElementById('import-ano-prova')?.value) : null) || null,
+        dificuldade: q.dificuldade || 'Médio',
+        area: q.area || '',
+        concurso: q.concurso || (tipo === 'prova' ? document.getElementById('import-nome-prova')?.value?.trim() : '') || '',
+        comentario: q.comentario || '',
+        texto_base: q.texto_base || '',
+        status: q.status || 'ativa',
+        fonte: 'importado',
+        provaId: provaId || null,
+        historico: [],
+        createdAt: Date.now(),
+      };
+      await setDoc(doc(db_fire, 'questoes', novaId), obj);
+      db.questoes.push(obj);
+      questoesIds.push({ id: novaId, peso: 1 });
+      salvas++;
+    }
+  }
+
+  // Atualizar totalQuestoes na prova
+  if (provaId) {
+    const p = (db.provas||[]).find(p => p.id === provaId);
+    if (p) { p.questoesIds = questoesIds; p.totalQuestoes = questoesIds.length; }
+    await setDoc(doc(db_fire, 'provas', provaId), { questoesIds, totalQuestoes: questoesIds.length }, { merge: true });
+  }
+
+  // Etapa final
+  avancarEtapa('salvar');
+  ['validar','dedup','salvar'].forEach(e => {
+    const el = document.getElementById('etapa-' + e);
+    const icon = document.getElementById('etapa-' + e + '-icon');
+    if (el) { el.style.opacity = '1'; el.style.background = 'var(--green-light)'; }
+    if (icon) icon.textContent = '✅';
+  });
+  atualizarProgresso('Importação concluída!', '', 100, 'Pronto!');
+  document.getElementById('import-prog-icon').textContent = '✅';
+
+  // Mostrar resultado
+  document.getElementById('import-prog-resultado').style.display = 'block';
+  let html = '<b>Resultado:</b><br>';
+  html += '<span style="color:var(--green)">✅ ' + salvas + ' questões novas criadas</span><br>';
+  if (vinculadas) html += '<span style="color:var(--blue)">🔗 ' + vinculadas + ' vinculadas (já existiam no banco)</span><br>';
+  if (similares.length) html += '<span style="color:#d97706">⚠️ ' + similares.length + ' similares — precisam de revisão</span><br>';
+  if (provaId) html += '<br><span style="color:var(--text-muted)">Prova salva em Provas Anteriores</span>';
+  document.getElementById('import-prog-resultado-body').innerHTML = html;
+  if (similares.length) document.getElementById('import-prog-btn-revisao').style.display = 'inline-flex';
+
+  // Limpar form
+  if (jsonEl) jsonEl.value = '';
+  populateSelects();
+  toast('Importação concluída!', 'success');
 }
 
 function abrirTransformarSimulado(provaId) {
