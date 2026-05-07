@@ -3871,8 +3871,8 @@ function renderTecQuestao() {
             </button>
             <div id="tec-texto-base-content" style="display:none;background:var(--surface);border-left:3px solid var(--blue);border-radius:0 8px 8px 0;padding:12px 14px;font-size:13px;color:var(--text-mid);line-height:1.75">${q.texto_base}</div>
           </div>` : ''}
-        <div id="tec-q-imagem-container"></div>
         <div class="tec-q-enunciado" style="white-space:pre-wrap">${q.enunciado||''}</div>
+        <div id="tec-q-imagem-container"></div>
         <div id="tec-opcoes">${opcoesHTML}</div>
         ${!jaRespondida ? `<div class="tec-actions">
           <button class="btn-resolver" id="btn-resolver" onclick="tecResponder()" disabled>Resolver Questão</button>
@@ -3900,7 +3900,7 @@ function renderTecQuestao() {
       const img = document.createElement('img');
       img.src = qImagem;
       img.alt = 'Imagem da questão';
-      img.style.cssText = 'max-width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:0 auto 14px';
+      img.style.cssText = 'max-width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin:14px auto 14px';
       img.onerror = () => { imgContainer.innerHTML = '<p style="color:var(--red);font-size:12px">❌ Erro ao carregar imagem</p>'; };
       imgContainer.appendChild(img);
     }
