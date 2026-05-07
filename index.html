@@ -5168,10 +5168,12 @@ async function salvarEdicaoQuestao() {
     toast('Imagem muito grande para salvar! Tente uma imagem menor.', 'error');
     return;
   }
+  console.log('Salvando questão:', id, '— imagem:', updates.imagem ? Math.round(updates.imagem.length/1024)+'KB' : 'vazia');
   try {
     await updateDoc(doc(db_fire, 'questoes', id), updates);
+    console.log('✅ Salvo com sucesso');
   } catch(e) {
-    console.error('Erro ao salvar:', e);
+    console.error('❌ Erro ao salvar:', e);
     toast('Erro ao salvar: ' + e.message, 'error');
     return;
   }
