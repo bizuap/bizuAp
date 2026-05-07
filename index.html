@@ -5181,13 +5181,21 @@ async function salvarEdicaoQuestao() {
   if (idx !== -1) db.questoes[idx] = { ...db.questoes[idx], ...updates };
   fecharEditarQuestao();
   renderBanco();
-  // Atualiza a questão no _tecPool também
+  // Atualiza a questão no _tecPool também (forçando novo objeto)
   if (typeof _tecPool !== 'undefined') {
     const tecIdx = _tecPool.findIndex(q => q.id === id);
-    if (tecIdx !== -1) _tecPool[tecIdx] = { ..._tecPool[tecIdx], ...updates };
+    if (tecIdx !== -1) {
+      _tecPool[tecIdx] = JSON.parse(JSON.stringify({ ..._tecPool[tecIdx], ...updates }));
+    }
   }
-  // Atualiza TEC se estiver na aba quiz
-  if (document.getElementById('tab-quiz').classList.contains('active')) renderTecQuestao();
+  // Também atualiza db.questoes com deep copy
+  const dbIdx = db.questoes.findIndex(q => q.id === id);
+  if (dbIdx !== -1) db.questoes[dbIdx] = JSON.parse(JSON.stringify({ ...db.questoes[dbIdx], ...updates }));
+  // Re-render TEC se ativo
+  const tabQuiz = document.getElementById('tab-quiz');
+  if (tabQuiz && tabQuiz.classList.contains('active')) {
+    setTimeout(() => renderTecQuestao(), 100);
+  }
   const msg = imagemVal ? 'Questão atualizada com imagem (' + Math.round(imagemVal.length*0.75/1024) + 'KB)!' : 'Questão atualizada!';
   toast(msg);
 }
