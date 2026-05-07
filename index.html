@@ -3033,7 +3033,9 @@ async function carregarQuestoes() {
       data.opcoes.forEach((v, i) => { if (letras[i]) obj[letras[i]] = v; });
       data.opcoes = obj;
     }
-    return { id: d.id, ...data };
+    const q = { id: d.id, ...data };
+    if (q.imagem) console.log('✅ Questão com imagem carregada:', q.codigo, Math.round(q.imagem.length/1024)+'KB');
+    return q;
   });
   updateBadge();
 }
