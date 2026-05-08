@@ -2049,6 +2049,25 @@ Exemplos:
         </div>
       </div>
 
+      <!-- ANOTAÇÕES -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <p style="font-size:13px;font-weight:700;color:var(--text);margin:0">📝 Minhas Anotações</p>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="salvarAnotacoes()" style="color:var(--green);border-color:var(--green)">💾 Salvar</button>
+            <button class="btn btn-ghost btn-sm" onclick="limparAnotacoes()" style="color:var(--red);border-color:var(--red)">🗑 Limpar</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Anote pendências, ideias e planejamentos. Salvo localmente no navegador.</div>
+        <textarea id="sistema-anotacoes" style="width:100%;min-height:220px;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;color:var(--text);background:var(--card);line-height:1.7;resize:vertical;font-family:inherit" placeholder="Escreva aqui suas anotações, pendências, ideias e planejamentos...
+&#10;Ex:
+&#10;— Corrigir simulado: pool desatualizado
+&#10;— Adicionar comentários às questões da PC-AP 2017
+&#10;— Criar conta Instagram @papirotatico
+&#10;— Importar prova PC-AP 2012"></textarea>
+        <div id="anotacoes-status" style="font-size:11px;color:var(--text-muted);margin-top:4px;text-align:right"></div>
+      </div>
+
       <!-- GASTOS -->
       <div style="margin-bottom:20px">
         <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">💰 Gastos e Previsão</p>
@@ -5406,6 +5425,7 @@ function showSettingsTab(tab) {
       const btn = document.getElementById('stab-' + t);
       if (btn) btn.classList.toggle('active', t === tab);
     });
+    setTimeout(carregarAnotacoes, 150);
     return;
   }
   ['materias','integracoes','dados','sistema'].forEach(t => {
@@ -5598,7 +5618,7 @@ document.getElementById('modal-settings').addEventListener('click', function(e) 
 Object.assign(window, {
   // Matérias & Tópicos
   saveBrevoKey, saveBrevoSender, gerarEEnviar, enviarEmailMassa, atualizarSidebarUser,
-  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito, toggleModoOficial, liberarGabaritoManual, verRankingSimuladoLive, verificarJanelaOficial, gabaritoLiberado, abrirMesclarMateria, confirmarMesclarMaterias, getSubtopicos, showImportTab, lerArquivoImport, limparImport, iniciarImport, fecharModalImportProgresso, abrirRevisaoDuplicatas, toggleTextoBase, uploadImagemQuestao, removerImagemQuestao, atualizarSubtopicosBanco, atualizarSubtopicosQuiz, atualizarTopicosEdicao, atualizarSubtopicosEdicao,
+  renderSimulados, iniciarSimuladoTela, comecarSimulado, pausarSimulado, retomarSimulado, togglePausaSimulado, simResponder, simNavegar, simIr, entregarSimulado, abrirMontarSimulado, atualizarDistribuicao, gerarSimuladoAutomatico, mostrarRevisaoSimulado, trocarQuestaoSimulado, removerQuestaoSimulado, salvarSimulado, expandirQuestaoSimulado, escolherQuestaoSimulado, filtrarEscolhaSimulado, confirmarEscolhaSimulado, excluirProva, abrirTransformarSimulado, salvarTransformacao, verRankingSimulado, gerarCardRanking, verResultadoSimulado, abrirReporte, enviarReporte, renderReportes, resolverReporte, descartarReporte, exportarReportes, abrirStatusQuestao, salvarStatusQuestao, duplicarQuestao, abrirExportar, atualizarPreviewExportacao, executarExportacao, carregarRevisaoImport, abrirRevisaoImport, renderRevisaoLista, toggleRevisaoIgnorar, confirmarRevisaoImport, renderBadgeReportes, triagemDesatualizadas, atualizarTopicoExp, fecharSistema, revisarProvaNoTEC, abrirModalApagarProva, confirmarApagarProva, gerarPDFProva, gerarPDFGabarito, toggleModoOficial, liberarGabaritoManual, verRankingSimuladoLive, verificarJanelaOficial, gabaritoLiberado, abrirMesclarMateria, confirmarMesclarMaterias, salvarAnotacoes, limparAnotacoes, carregarAnotacoes, getSubtopicos, showImportTab, lerArquivoImport, limparImport, iniciarImport, fecharModalImportProgresso, abrirRevisaoDuplicatas, toggleTextoBase, uploadImagemQuestao, removerImagemQuestao, atualizarSubtopicosBanco, atualizarSubtopicosQuiz, atualizarTopicosEdicao, atualizarSubtopicosEdicao,
   saveMaterias, adicionarMateria, removerMateria, renomearMateria, renderMateriasList, moverTopico, renumerarQuestoes, toggleResolucao,
   toggleMateriaTopicos, adicionarTopico, removerTopico, renomearTopico,
   populateTopicosSelect, atualizarTopicosIA,
@@ -7477,6 +7497,35 @@ function removerImagemQuestao() {
   if (status) status.textContent = '';
   const fileInput = document.getElementById('edit-q-imagem-file');
   if (fileInput) fileInput.value = '';
+}
+
+// ============================================================
+// ANOTAÇÕES DO SISTEMA
+// ============================================================
+function carregarAnotacoes() {
+  const el = document.getElementById('sistema-anotacoes');
+  if (!el) return;
+  el.value = localStorage.getItem('pt_anotacoes') || '';
+}
+
+function salvarAnotacoes() {
+  const el = document.getElementById('sistema-anotacoes');
+  const status = document.getElementById('anotacoes-status');
+  if (!el) return;
+  localStorage.setItem('pt_anotacoes', el.value);
+  if (status) {
+    status.textContent = '✅ Salvo em ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    setTimeout(() => { if (status) status.textContent = ''; }, 3000);
+  }
+  toast('Anotações salvas!', 'success');
+}
+
+function limparAnotacoes() {
+  if (!confirm('Apagar todas as anotações?')) return;
+  const el = document.getElementById('sistema-anotacoes');
+  if (el) el.value = '';
+  localStorage.removeItem('pt_anotacoes');
+  toast('Anotações apagadas!');
 }
 
 function abrirTransformarSimulado(provaId) {
