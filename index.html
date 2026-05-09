@@ -27,6 +27,7 @@ function serverTimestamp() { return new Date().toISOString(); }
 // CONTROLE DE AUTH
 // =============================================
 supabase.auth.onAuthStateChange(async (event, session) => {
+  console.log('🔐 onAuthStateChange:', event, session?.user?.email);
   if (session?.user) {
     const userData = await verificarAcesso(session.user);
     if (userData) {
@@ -51,15 +52,20 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 
 async function verificarAcesso(user) {
   try {
+    console.log('🔍 verificarAcesso iniciado para:', user.email, 'id:', user.id);
     const { data, error } = await supabase.from('usuarios').select('*').eq('id', user.id).single();
-    if (error || !data) return null;
-    if (!data.ativo) return null;
+    console.log('📦 resultado:', { data, error });
+    if (error) { console.error('❌ erro ao buscar usuário:', error); return null; }
+    if (!data) { console.warn('⚠️ usuário não encontrado na tabela'); return null; }
+    if (!data.ativo) { console.warn('⚠️ usuário inativo'); return null; }
     if (new Date(data.validade) < new Date()) {
+      console.warn('⚠️ validade expirada');
       await supabase.from('usuarios').update({ ativo: false }).eq('id', user.id);
       return null;
     }
+    console.log('✅ acesso liberado!');
     return data;
-  } catch(e) { return null; }
+  } catch(e) { console.error('💥 exceção em verificarAcesso:', e); return null; }
 }
 
 function mostrarBloqueio(user) {
