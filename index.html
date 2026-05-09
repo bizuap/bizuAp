@@ -10,12 +10,21 @@
 // =============================================
 // SUPABASE CONFIG
 // =============================================
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
 const SUPABASE_URL = 'https://lxgkdlwayutpmrbsaxte.supabase.co'
 const SUPABASE_KEY = 'sb_publishable_dTRrZeagGPCV91uKFwf1Jg_kZ85iEwB'
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  global: {
+    fetch: (...args) => fetch(...args)
+  }
+})
 window._sb = supabase
+console.log('✅ Supabase client criado:', SUPABASE_URL)
 
 const ADMIN_EMAILS = ['contato@papirotatico.com.br', 'bizuap.app@gmail.com']
 
