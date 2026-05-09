@@ -35,7 +35,7 @@ supabase.auth.onAuthStateChange(async (event, session) => {
       document.getElementById('bloqueio-screen').style.display = 'none';
       window._currentUser = session.user;
       window._userData = userData;
-   if (ADMIN_EMAILS.includes(session.user.email)) {
+      if (ADMIN_EMAILS.includes(session.user.email)) {
         document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'flex');
       }
       init();
